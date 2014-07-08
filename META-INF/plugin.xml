@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="iso-8859-1"?>
+<idea-plugin version="2">
+
+    <id>com.intellij.checker-framework</id>
+    <name>Checker Framework Support</name>
+    <version>1.0</version>
+    <vendor>JetBrains</vendor>
+
+    <depends>com.intellij.modules.platform</depends>
+
+    <extensions defaultExtensionNs="com.intellij">
+        <projectService serviceImplementation="com.jetbrains.plugins.checkerframework.configurable.Settings"/>
+        <projectConfigurable instance="com.jetbrains.plugins.checkerframework.configurable.SettingsForm"/>
+    </extensions>
+
+</idea-plugin>
