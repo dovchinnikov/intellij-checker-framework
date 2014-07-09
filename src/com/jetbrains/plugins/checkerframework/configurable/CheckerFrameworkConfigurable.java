@@ -95,8 +95,6 @@ public class CheckerFrameworkConfigurable implements Configurable {
     private void createUIComponents() {
         myAvailableCheckersTable = new JBTable(new CheckersTableModel());
         myAvailableCheckersTable.getColumnModel().getColumn(0).setMaxWidth(60);
-        myAvailableCheckersTable.setRowSelectionAllowed(false);
-        myAvailableCheckersTable.setStriped(true);
     }
 
     private class CheckersTableModel extends AbstractTableModel {
