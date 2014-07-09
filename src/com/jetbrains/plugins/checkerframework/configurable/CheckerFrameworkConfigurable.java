@@ -11,8 +11,8 @@ import org.jetbrains.annotations.Nullable;
 
 import javax.swing.*;
 import javax.swing.table.AbstractTableModel;
-import java.util.ArrayList;
-import java.util.List;
+import java.util.HashSet;
+import java.util.Set;
 
 /**
  * @author Daniil Ovchinnikov.
@@ -24,15 +24,11 @@ public class CheckerFrameworkConfigurable implements Configurable {
     private JBTable myAvailableCheckersTable;
 
     private final Project myProject;
-    private final List<Class<? extends AbstractTypeProcessor>> myAvailableCheckers;
-    private final List<Class<? extends AbstractTypeProcessor>> myActiveCheckers;
-    private final List<Class<? extends AbstractTypeProcessor>> mySavedActiveCheckers;
+    private Set<String> myActiveCheckers;
+    private Set<String> mySavedActiveCheckers;
 
     public CheckerFrameworkConfigurable(@NotNull Project project) {
-        this.myProject = project;
-        this.myAvailableCheckers = ClassScanner.findChildren(AbstractTypeProcessor.class, "org.checkerframework.checker");
-        this.myActiveCheckers = new ArrayList<Class<? extends AbstractTypeProcessor>>();
-        this.mySavedActiveCheckers = new ArrayList<Class<? extends AbstractTypeProcessor>>();
+        myProject = project;
         reset();
     }
 
@@ -65,26 +61,14 @@ public class CheckerFrameworkConfigurable implements Configurable {
 
     @Override
     public void apply() throws ConfigurationException {
-        final List<String> activeCheckersStrings = new ArrayList<String>();
-        for (final Class clazz : myActiveCheckers) {
-            activeCheckersStrings.add(clazz.getCanonicalName());
-        }
-        CheckerFrameworkSettings.getInstance(myProject).setActiveCheckers(activeCheckersStrings);
-        mySavedActiveCheckers.clear();
-        mySavedActiveCheckers.addAll(myActiveCheckers);
+        CheckerFrameworkSettings.getInstance(myProject).setActiveCheckers(myActiveCheckers);
+        mySavedActiveCheckers = new HashSet<String>(myActiveCheckers);
     }
 
     @Override
     public void reset() {
-        myActiveCheckers.clear();
-        for (final String className : CheckerFrameworkSettings.getInstance(myProject).getActiveCheckers()) {
-            try {
-                myActiveCheckers.add(Class.forName(className).asSubclass(AbstractTypeProcessor.class));
-            } catch (ClassNotFoundException ignored) {
-            }
-        }
-        mySavedActiveCheckers.clear();
-        mySavedActiveCheckers.addAll(myActiveCheckers);
+        myActiveCheckers = new HashSet<String>(CheckerFrameworkSettings.getInstance(myProject).getActiveCheckers());
+        mySavedActiveCheckers = new HashSet<String>(myActiveCheckers);
     }
 
     @Override
@@ -107,23 +91,21 @@ public class CheckerFrameworkConfigurable implements Configurable {
         }
 
         @Override
-        public int getRowCount() {
-            return CheckerFrameworkConfigurable.this.myAvailableCheckers.size();
-        }
-
-        @Override
         public String getColumnName(int col) {
             return myColumnNames[col];
         }
 
         @Override
+        public int getRowCount() {
+            return CheckerFrameworkSettings.BUILTIN_CHECKERS.size();
+        }
+
+        @Override
         public Object getValueAt(int row, int col) {
-            final Class clazz = CheckerFrameworkConfigurable.this.myAvailableCheckers.get(row);
-            if (col == 0) {
-                return CheckerFrameworkConfigurable.this.myActiveCheckers.contains(clazz);
-            } else {
-                return clazz.getSimpleName();
-            }
+            final Class clazz = CheckerFrameworkSettings.BUILTIN_CHECKERS.get(row);
+            return col == 0
+                   ? CheckerFrameworkConfigurable.this.myActiveCheckers.contains(clazz.getCanonicalName())
+                   : clazz;
         }
 
         @Override
@@ -132,7 +114,7 @@ public class CheckerFrameworkConfigurable implements Configurable {
                 case 0:
                     return Boolean.class;
                 default:
-                    return String.class;
+                    return Class.class;
             }
         }
 
@@ -143,11 +125,11 @@ public class CheckerFrameworkConfigurable implements Configurable {
 
         @Override
         public void setValueAt(Object value, int row, int col) {
-            final Class<? extends AbstractTypeProcessor> clazz = CheckerFrameworkConfigurable.this.myAvailableCheckers.get(row);
+            final Class<? extends AbstractTypeProcessor> clazz = CheckerFrameworkSettings.BUILTIN_CHECKERS.get(row);
             if (Boolean.valueOf(String.valueOf(value))) {
-                CheckerFrameworkConfigurable.this.myActiveCheckers.add(clazz);
+                CheckerFrameworkConfigurable.this.myActiveCheckers.add(clazz.getCanonicalName());
             } else {
-                CheckerFrameworkConfigurable.this.myActiveCheckers.remove(clazz);
+                CheckerFrameworkConfigurable.this.myActiveCheckers.remove(clazz.getCanonicalName());
             }
             fireTableCellUpdated(row, col);
         }
