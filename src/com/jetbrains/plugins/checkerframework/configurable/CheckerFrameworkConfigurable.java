@@ -3,6 +3,7 @@ package com.jetbrains.plugins.checkerframework.configurable;
 import com.intellij.openapi.options.Configurable;
 import com.intellij.openapi.options.ConfigurationException;
 import com.intellij.openapi.project.Project;
+import com.intellij.ui.components.JBScrollPane;
 import com.intellij.ui.table.JBTable;
 import org.checkerframework.javacutil.AbstractTypeProcessor;
 import org.jetbrains.annotations.Nls;
@@ -47,12 +48,15 @@ public class CheckerFrameworkConfigurable implements Configurable {
     @Override
     public JComponent createComponent() {
         final JBTable availableCheckersTable = new JBTable(new CheckersTableModel());
-        availableCheckersTable.getColumnModel().getColumn(0).setMaxWidth(60);
+        availableCheckersTable.getColumnModel().getColumn(0).setMaxWidth(120);
+        availableCheckersTable.getColumnModel().getColumn(0).setPreferredWidth(120);
+        availableCheckersTable.getTableHeader().setResizingAllowed(false);
+        availableCheckersTable.getTableHeader().setReorderingAllowed(false);
         availableCheckersTable.setRowSelectionAllowed(false);
         availableCheckersTable.setStriped(true);
 
         final JPanel rootPane = new JPanel(new BorderLayout());
-        rootPane.add(availableCheckersTable, BorderLayout.NORTH);
+        rootPane.add(new JBScrollPane(availableCheckersTable), BorderLayout.NORTH);
 
         return rootPane;
     }
@@ -83,7 +87,7 @@ public class CheckerFrameworkConfigurable implements Configurable {
         // nothing to do here
     }
 
-    private static final String[] myColumnNames = {"Enabled/Disabled", "Checker name"};
+    private static final String[] myColumnNames = {"Enabled/Disabled", "Checker class"};
 
     private class CheckersTableModel extends AbstractTableModel {
 
