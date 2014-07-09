@@ -20,7 +20,7 @@ public class ClassScanner {
     public static
     @NotNull
     <T> List<Class<? extends T>> findChildren(final @NotNull Class<T> superclass) {
-        final List<Class<? extends T>> result = new ArrayList<>();
+        final List<Class<? extends T>> result = new ArrayList<Class<? extends T>>();
         final String superclassURL = superclass.getResource("").toString();
 
         int index = superclassURL.indexOf('!');
@@ -50,7 +50,8 @@ public class ClassScanner {
                     if (!Modifier.isAbstract(clazz.getModifiers()) && !clazz.isAnonymousClass()) {
                         result.add(clazz);
                     }
-                } catch (ClassNotFoundException | ClassCastException ignored) {
+                } catch (ClassNotFoundException ignored){
+                } catch (ClassCastException ignored) {
                 }
             }
         }

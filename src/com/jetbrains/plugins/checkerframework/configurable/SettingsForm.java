@@ -31,8 +31,8 @@ public class SettingsForm implements Configurable {
     public SettingsForm(@NotNull Project project) throws ClassNotFoundException {
         this.project = project;
         this.availableCheckers = ClassScanner.findChildren(AbstractTypeProcessor.class);
-        this.activeCheckers = new ArrayList<>();
-        this.savedActiveCheckers = new ArrayList<>();
+        this.activeCheckers = new ArrayList<Class<? extends AbstractTypeProcessor>>();
+        this.savedActiveCheckers = new ArrayList<Class<? extends AbstractTypeProcessor>>();
         reset();
     }
 
@@ -65,8 +65,10 @@ public class SettingsForm implements Configurable {
 
     @Override
     public void apply() throws ConfigurationException {
-        final List<String> activeCheckersStrings = new ArrayList<>();
-        activeCheckers.forEach(clazz -> activeCheckersStrings.add(clazz.getCanonicalName()));
+        final List<String> activeCheckersStrings = new ArrayList<String>();
+        for (final Class clazz : activeCheckers) {
+            activeCheckersStrings.add(clazz.getCanonicalName());
+        }
         Settings.getInstance(project).setActiveCheckers(activeCheckersStrings);
         savedActiveCheckers.clear();
         savedActiveCheckers.addAll(activeCheckers);
@@ -152,7 +154,6 @@ public class SettingsForm implements Configurable {
             fireTableCellUpdated(row, col);
         }
     }
-
 }
 
 

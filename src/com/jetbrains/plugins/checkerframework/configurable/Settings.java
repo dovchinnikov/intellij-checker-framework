@@ -28,7 +28,7 @@ public class Settings implements PersistentStateComponent<Settings> {
     private List<String> activeCheckers;
 
     public Settings() {
-        this.activeCheckers = new ArrayList<>();
+        this.activeCheckers = new ArrayList<String>();
     }
 
     @Nullable
