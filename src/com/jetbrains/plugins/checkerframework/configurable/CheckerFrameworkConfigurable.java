@@ -30,7 +30,7 @@ public class CheckerFrameworkConfigurable implements Configurable {
 
     public CheckerFrameworkConfigurable(@NotNull Project project) {
         this.myProject = project;
-        this.myAvailableCheckers = ClassScanner.findChildren(AbstractTypeProcessor.class);
+        this.myAvailableCheckers = ClassScanner.findChildren(AbstractTypeProcessor.class, "org.checkerframework.checker");
         this.myActiveCheckers = new ArrayList<Class<? extends AbstractTypeProcessor>>();
         this.mySavedActiveCheckers = new ArrayList<Class<? extends AbstractTypeProcessor>>();
         reset();
