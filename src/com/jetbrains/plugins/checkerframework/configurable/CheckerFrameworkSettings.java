@@ -1,10 +1,5 @@
 package com.jetbrains.plugins.checkerframework.configurable;
 
-/**
- * @author Daniil Ovchinnikov.
- * @since 7/8/14.
- */
-
 import com.intellij.openapi.components.*;
 import com.intellij.openapi.project.Project;
 import org.jetbrains.annotations.NotNull;
@@ -23,35 +18,35 @@ import java.util.List;
         )
     }
 )
-public class Settings implements PersistentStateComponent<Settings> {
+public class CheckerFrameworkSettings implements PersistentStateComponent<CheckerFrameworkSettings> {
 
-    private List<String> activeCheckers;
+    private List<String> myActiveCheckers;
 
-    public Settings() {
-        this.activeCheckers = new ArrayList<String>();
+    public CheckerFrameworkSettings() {
+        this.myActiveCheckers = new ArrayList<String>();
     }
 
     @Nullable
     @Override
-    public Settings getState() {
+    public CheckerFrameworkSettings getState() {
         return this;
     }
 
     @Override
-    public void loadState(@NotNull Settings state) {
-        this.activeCheckers = state.activeCheckers;
+    public void loadState(@NotNull CheckerFrameworkSettings state) {
+        this.myActiveCheckers = state.myActiveCheckers;
     }
 
     public List<String> getActiveCheckers() {
-        return activeCheckers;
+        return myActiveCheckers;
     }
 
     public void setActiveCheckers(List<String> activeCheckers) {
-        this.activeCheckers = activeCheckers;
+        this.myActiveCheckers = activeCheckers;
     }
 
     @NotNull
-    public static Settings getInstance(@NotNull Project project) {
-        return ServiceManager.getService(project, Settings.class);
+    public static CheckerFrameworkSettings getInstance(@NotNull Project project) {
+        return ServiceManager.getService(project, CheckerFrameworkSettings.class);
     }
 }
