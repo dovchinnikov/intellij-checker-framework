@@ -11,6 +11,7 @@ import org.jetbrains.annotations.Nullable;
 
 import javax.swing.*;
 import javax.swing.table.AbstractTableModel;
+import java.awt.*;
 import java.util.HashSet;
 import java.util.Set;
 
@@ -20,10 +21,8 @@ import java.util.Set;
  */
 public class CheckerFrameworkConfigurable implements Configurable {
 
-    private JPanel myRootPane;
-    private JBTable myAvailableCheckersTable;
-
     private final Project myProject;
+
     private Set<String> myActiveCheckers;
     private Set<String> mySavedActiveCheckers;
 
@@ -47,7 +46,15 @@ public class CheckerFrameworkConfigurable implements Configurable {
     @Nullable
     @Override
     public JComponent createComponent() {
-        return myRootPane;
+        final JBTable availableCheckersTable = new JBTable(new CheckersTableModel());
+        availableCheckersTable.getColumnModel().getColumn(0).setMaxWidth(60);
+        availableCheckersTable.setRowSelectionAllowed(false);
+        availableCheckersTable.setStriped(true);
+
+        final JPanel rootPane = new JPanel(new BorderLayout());
+        rootPane.add(availableCheckersTable, BorderLayout.NORTH);
+
+        return rootPane;
     }
 
     @Override
@@ -76,14 +83,9 @@ public class CheckerFrameworkConfigurable implements Configurable {
         // nothing to do here
     }
 
-    private void createUIComponents() {
-        myAvailableCheckersTable = new JBTable(new CheckersTableModel());
-        myAvailableCheckersTable.getColumnModel().getColumn(0).setMaxWidth(60);
-    }
+    private static final String[] myColumnNames = {"Enabled/Disabled", "Checker name"};
 
     private class CheckersTableModel extends AbstractTableModel {
-
-        private final String[] myColumnNames = {"Enabled/Disabled", "Checker name"};
 
         @Override
         public int getColumnCount() {
@@ -104,7 +106,7 @@ public class CheckerFrameworkConfigurable implements Configurable {
         public Object getValueAt(int row, int col) {
             final Class clazz = CheckerFrameworkSettings.BUILTIN_CHECKERS.get(row);
             return col == 0
-                   ? CheckerFrameworkConfigurable.this.myActiveCheckers.contains(clazz.getCanonicalName())
+                   ? myActiveCheckers.contains(clazz.getCanonicalName())
                    : clazz;
         }
 
@@ -126,10 +128,10 @@ public class CheckerFrameworkConfigurable implements Configurable {
         @Override
         public void setValueAt(Object value, int row, int col) {
             final Class<? extends AbstractTypeProcessor> clazz = CheckerFrameworkSettings.BUILTIN_CHECKERS.get(row);
-            if (Boolean.valueOf(String.valueOf(value))) {
-                CheckerFrameworkConfigurable.this.myActiveCheckers.add(clazz.getCanonicalName());
+            if (Boolean.TRUE.equals(value)) {
+                myActiveCheckers.add(clazz.getCanonicalName());
             } else {
-                CheckerFrameworkConfigurable.this.myActiveCheckers.remove(clazz.getCanonicalName());
+                myActiveCheckers.remove(clazz.getCanonicalName());
             }
             fireTableCellUpdated(row, col);
         }
