@@ -43,14 +43,14 @@ public class ClassScanner {
             if (!entry.isDirectory() && entry.toString().endsWith(".class")) {
                 try {
                     final Class<? extends T> clazz = Class.forName(
-                            entry.toString()
-                                    .replaceAll(File.separator, ".")
-                                    .replace(".class", "")
+                        entry.toString()
+                            .replaceAll(File.separator, ".")
+                            .replace(".class", "")
                     ).asSubclass(superclass);
                     if (!Modifier.isAbstract(clazz.getModifiers()) && !clazz.isAnonymousClass()) {
                         result.add(clazz);
                     }
-                } catch (ClassNotFoundException ignored){
+                } catch (ClassNotFoundException ignored) {
                 } catch (ClassCastException ignored) {
                 }
             }

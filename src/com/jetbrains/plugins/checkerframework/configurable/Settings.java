@@ -15,13 +15,13 @@ import java.util.List;
 
 
 @State(
-        name = "CheckerFrameworkPluginSettings",
-        storages = {
-                @Storage(
-                        id = "default",
-                        file = StoragePathMacros.PROJECT_CONFIG_DIR + "/checkerframework-plugin-settings.xml"
-                )
-        }
+    name = "CheckerFrameworkPluginSettings",
+    storages = {
+        @Storage(
+            id = "default",
+            file = StoragePathMacros.PROJECT_CONFIG_DIR + "/checkerframework-plugin-settings.xml"
+        )
+    }
 )
 public class Settings implements PersistentStateComponent<Settings> {
 
@@ -54,5 +54,4 @@ public class Settings implements PersistentStateComponent<Settings> {
     public static Settings getInstance(@NotNull Project project) {
         return ServiceManager.getService(project, Settings.class);
     }
-
 }

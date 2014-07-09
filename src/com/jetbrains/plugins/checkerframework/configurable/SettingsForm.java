@@ -57,9 +57,9 @@ public class SettingsForm implements Configurable {
     @Override
     public boolean isModified() {
         return !(
-                savedActiveCheckers.size() == activeCheckers.size()
-                        && savedActiveCheckers.containsAll(activeCheckers)
-                        && activeCheckers.containsAll(savedActiveCheckers)
+            savedActiveCheckers.size() == activeCheckers.size()
+            && savedActiveCheckers.containsAll(activeCheckers)
+            && activeCheckers.containsAll(savedActiveCheckers)
         );
     }
 
@@ -146,7 +146,7 @@ public class SettingsForm implements Configurable {
         @Override
         public void setValueAt(Object value, int row, int col) {
             final Class<? extends AbstractTypeProcessor> clazz = SettingsForm.this.availableCheckers.get(row);
-            if ((Boolean) value) {
+            if ((Boolean)value) {
                 SettingsForm.this.activeCheckers.add(clazz);
             } else {
                 SettingsForm.this.activeCheckers.remove(clazz);
