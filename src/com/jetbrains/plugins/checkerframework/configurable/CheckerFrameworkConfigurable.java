@@ -5,6 +5,7 @@ import com.intellij.compiler.CompilerConfigurationImpl;
 import com.intellij.openapi.options.Configurable;
 import com.intellij.openapi.options.ConfigurationException;
 import com.intellij.openapi.project.Project;
+import com.intellij.util.containers.MultiMap;
 import org.checkerframework.javacutil.AbstractTypeProcessor;
 import org.jetbrains.annotations.Nls;
 import org.jetbrains.annotations.Nullable;
@@ -13,14 +14,15 @@ import org.jetbrains.jps.model.java.compiler.ProcessorConfigProfile;
 import javax.swing.*;
 import javax.swing.table.AbstractTableModel;
 import javax.swing.table.TableModel;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
 
 public class CheckerFrameworkConfigurable implements Configurable {
 
     private final Project myProject;
 
-    private final Map<ProcessorConfigProfile, Set<String>> myToBeAddedProcessors = new HashMap<ProcessorConfigProfile, Set<String>>();
-    private final Map<ProcessorConfigProfile, Set<String>> myTobeRemovedProcessors = new HashMap<ProcessorConfigProfile, Set<String>>();
+    private final MultiMap<ProcessorConfigProfile, String> myToBeAddedProcessors = new MultiMap<ProcessorConfigProfile, String>();
+    private final MultiMap<ProcessorConfigProfile, String> myTobeRemovedProcessors = new MultiMap<ProcessorConfigProfile, String>();
 
     private CheckerFrameworkConfigurableUI myUI;
 
@@ -54,17 +56,11 @@ public class CheckerFrameworkConfigurable implements Configurable {
     @Override
     public void apply() throws ConfigurationException {
         for (final ProcessorConfigProfile profile : myToBeAddedProcessors.keySet()) {
-            if (myToBeAddedProcessors.get(profile) == null) {
-                continue;
-            }
             for (final String checkerClass : myToBeAddedProcessors.get(profile)) {
                 profile.addProcessor(checkerClass);
             }
         }
         for (final ProcessorConfigProfile profile : myTobeRemovedProcessors.keySet()) {
-            if (myTobeRemovedProcessors.get(profile) == null) {
-                continue;
-            }
             for (final String checkerClass : myTobeRemovedProcessors.get(profile)) {
                 profile.removeProcessor(checkerClass);
             }
@@ -158,26 +154,16 @@ public class CheckerFrameworkConfigurable implements Configurable {
         public void setValueAt(Object value, int row, int col) {
             final Class<? extends AbstractTypeProcessor> clazz = CheckerFrameworkSettings.BUILTIN_CHECKERS.get(row);
 
-            final Map<ProcessorConfigProfile, Set<String>> mapToAddTo = Boolean.TRUE.equals(value)
+            final MultiMap<ProcessorConfigProfile, String> mapToAddTo = Boolean.TRUE.equals(value)
                                                                         ? myToBeAddedProcessors
                                                                         : myTobeRemovedProcessors;
-            final Map<ProcessorConfigProfile, Set<String>> mapToRemoveFrom = Boolean.TRUE.equals(value)
+            final MultiMap<ProcessorConfigProfile, String> mapToRemoveFrom = Boolean.TRUE.equals(value)
                                                                              ? myTobeRemovedProcessors
                                                                              : myToBeAddedProcessors;
             final ProcessorConfigProfile currentProfile = getUI().getCurrentSelectedProfile();
 
-            boolean wasRemoved = false;
-            if (mapToRemoveFrom.get(currentProfile) != null) {
-                wasRemoved = mapToRemoveFrom.get(currentProfile).remove(clazz.getCanonicalName());
-                if (mapToRemoveFrom.get(currentProfile).isEmpty()) {
-                    mapToRemoveFrom.remove(currentProfile);
-                }
-            }
-            if (!wasRemoved) {
-                if (mapToAddTo.get(currentProfile) == null) {
-                    mapToAddTo.put(currentProfile, new HashSet<String>());
-                }
-                mapToAddTo.get(currentProfile).add(clazz.getCanonicalName());
+            if (!mapToRemoveFrom.get(currentProfile).remove(clazz.getCanonicalName())) {
+                mapToAddTo.putValue(currentProfile, clazz.getCanonicalName());
             }
 
             fireTableCellUpdated(row, col);
