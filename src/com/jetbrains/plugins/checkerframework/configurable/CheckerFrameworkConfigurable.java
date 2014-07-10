@@ -1,19 +1,23 @@
 package com.jetbrains.plugins.checkerframework.configurable;
 
+import com.intellij.compiler.CompilerConfiguration;
+import com.intellij.compiler.CompilerConfigurationImpl;
 import com.intellij.openapi.options.Configurable;
 import com.intellij.openapi.options.ConfigurationException;
 import com.intellij.openapi.project.Project;
-import com.intellij.ui.components.JBScrollPane;
+import com.intellij.openapi.ui.ComboBox;
 import com.intellij.ui.table.JBTable;
 import org.checkerframework.javacutil.AbstractTypeProcessor;
 import org.jetbrains.annotations.Nls;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+import org.jetbrains.jps.model.java.compiler.ProcessorConfigProfile;
 
 import javax.swing.*;
 import javax.swing.table.AbstractTableModel;
-import java.awt.*;
+import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 
 /**
@@ -21,6 +25,12 @@ import java.util.Set;
  * @since 7/8/14.
  */
 public class CheckerFrameworkConfigurable implements Configurable {
+
+    private JPanel myRootPane;
+    private JBTable myAvailableCheckersTable;
+    private ComboBox myProcessorProfilesComboBox;
+    private JButton myEnableAllCheckersButton;
+    private JButton myDisableAllCheckersButton;
 
     private final Project myProject;
 
@@ -47,18 +57,7 @@ public class CheckerFrameworkConfigurable implements Configurable {
     @Nullable
     @Override
     public JComponent createComponent() {
-        final JBTable availableCheckersTable = new JBTable(new CheckersTableModel());
-        availableCheckersTable.getColumnModel().getColumn(0).setMaxWidth(120);
-        availableCheckersTable.getColumnModel().getColumn(0).setPreferredWidth(120);
-        availableCheckersTable.getTableHeader().setResizingAllowed(false);
-        availableCheckersTable.getTableHeader().setReorderingAllowed(false);
-        availableCheckersTable.setRowSelectionAllowed(false);
-        availableCheckersTable.setStriped(true);
-
-        final JPanel rootPane = new JPanel(new BorderLayout());
-        rootPane.add(new JBScrollPane(availableCheckersTable), BorderLayout.NORTH);
-
-        return rootPane;
+        return myRootPane;
     }
 
     @Override
@@ -87,9 +86,34 @@ public class CheckerFrameworkConfigurable implements Configurable {
         // nothing to do here
     }
 
-    private static final String[] myColumnNames = {"Enabled/Disabled", "Checker class"};
+    private void createUIComponents() {
+        myAvailableCheckersTable = new JBTable(new CheckersTableModel());
+        myAvailableCheckersTable.getColumnModel().getColumn(0).setMaxWidth(120);
+        myAvailableCheckersTable.getColumnModel().getColumn(0).setPreferredWidth(120);
+        myAvailableCheckersTable.getTableHeader().setResizingAllowed(false);
+        myAvailableCheckersTable.getTableHeader().setReorderingAllowed(false);
+
+        final CompilerConfigurationImpl compilerConfiguration = (CompilerConfigurationImpl)CompilerConfiguration.getInstance(myProject);
+        final List<ProcessorConfigProfile> configProfiles = new ArrayList<ProcessorConfigProfile>();
+        configProfiles.add(compilerConfiguration.getDefaultProcessorProfile());
+        configProfiles.addAll(compilerConfiguration.getModuleProcessorProfiles());
+        myProcessorProfilesComboBox = new ComboBox(new DefaultComboBoxModel() {
+            @Override
+            public Object getElementAt(int index) {
+                return configProfiles.get(index);
+            }
+
+            @Override
+            public int getSize() {
+                return configProfiles.size();
+            }
+        });
+        myProcessorProfilesComboBox.setSelectedIndex(0);
+    }
 
     private class CheckersTableModel extends AbstractTableModel {
+
+        private final String[] myColumnNames = {"Enabled/Disabled", "Checker class"};
 
         @Override
         public int getColumnCount() {
