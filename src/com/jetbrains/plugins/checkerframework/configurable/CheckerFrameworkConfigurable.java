@@ -17,31 +17,15 @@ import java.util.*;
 
 public class CheckerFrameworkConfigurable implements Configurable {
 
+    private final Project myProject;
+
     private final Map<ProcessorConfigProfile, Set<String>> myToBeAddedProcessors = new HashMap<ProcessorConfigProfile, Set<String>>();
     private final Map<ProcessorConfigProfile, Set<String>> myTobeRemovedProcessors = new HashMap<ProcessorConfigProfile, Set<String>>();
 
-    private final TableModel myCheckersModel;
-    private final ComboBoxModel myProfilesModel;
-
-    private final CheckerFrameworkConfigurableUI ui;
+    private CheckerFrameworkConfigurableUI myUI;
 
     public CheckerFrameworkConfigurable(final Project project) {
-
-        myCheckersModel = new CheckersTableModel();
-        myProfilesModel = new ProcessorProfileComboboxModel(project);
-
-        ui = new CheckerFrameworkConfigurableUI() {
-
-            @Override
-            protected TableModel getCheckersModel() {
-                return myCheckersModel;
-            }
-
-            @Override
-            protected ComboBoxModel getProfilesModel() {
-                return myProfilesModel;
-            }
-        };
+        myProject = project;
     }
 
     @Nls
@@ -59,7 +43,7 @@ public class CheckerFrameworkConfigurable implements Configurable {
     @Nullable
     @Override
     public JComponent createComponent() {
-        return ui.getRoot();
+        return getUI().getRoot();
     }
 
     @Override
@@ -99,6 +83,25 @@ public class CheckerFrameworkConfigurable implements Configurable {
         // nothing to do here
     }
 
+    private CheckerFrameworkConfigurableUI getUI() {
+        if (myUI == null) {
+            final TableModel myCheckersModel = new CheckersTableModel();
+            final ComboBoxModel myProfilesModel = new ProcessorProfileComboboxModel(myProject);
+            myUI = new CheckerFrameworkConfigurableUI() {
+                @Override
+                protected TableModel getCheckersModel() {
+                    return myCheckersModel;
+                }
+
+                @Override
+                protected ComboBoxModel getProfilesModel() {
+                    return myProfilesModel;
+                }
+            };
+        }
+        return myUI;
+    }
+
     private class CheckersTableModel extends AbstractTableModel {
 
         private final String[] myColumnNames = {"Enabled/Disabled", "Checker class"};
@@ -122,7 +125,7 @@ public class CheckerFrameworkConfigurable implements Configurable {
         public Object getValueAt(int row, int col) {
             final Class clazz = CheckerFrameworkSettings.BUILTIN_CHECKERS.get(row);
             final String canonicalName = clazz.getCanonicalName();
-            final ProcessorConfigProfile currentProfile = ui.getCurrentSelectedProfile();
+            final ProcessorConfigProfile currentProfile = getUI().getCurrentSelectedProfile();
             return col == 0
                    ? (
                          currentProfile.getProcessors().contains(canonicalName) || (
@@ -161,7 +164,7 @@ public class CheckerFrameworkConfigurable implements Configurable {
             final Map<ProcessorConfigProfile, Set<String>> mapToRemoveFrom = Boolean.TRUE.equals(value)
                                                                              ? myTobeRemovedProcessors
                                                                              : myToBeAddedProcessors;
-            final ProcessorConfigProfile currentProfile = ui.getCurrentSelectedProfile();
+            final ProcessorConfigProfile currentProfile = getUI().getCurrentSelectedProfile();
 
             boolean wasRemoved = false;
             if (mapToRemoveFrom.get(currentProfile) != null) {
