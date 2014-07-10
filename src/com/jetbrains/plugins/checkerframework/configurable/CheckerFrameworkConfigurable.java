@@ -5,41 +5,43 @@ import com.intellij.compiler.CompilerConfigurationImpl;
 import com.intellij.openapi.options.Configurable;
 import com.intellij.openapi.options.ConfigurationException;
 import com.intellij.openapi.project.Project;
-import com.intellij.openapi.ui.ComboBox;
-import com.intellij.ui.table.JBTable;
 import org.checkerframework.javacutil.AbstractTypeProcessor;
 import org.jetbrains.annotations.Nls;
-import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.jetbrains.jps.model.java.compiler.ProcessorConfigProfile;
 
 import javax.swing.*;
 import javax.swing.table.AbstractTableModel;
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
+import javax.swing.table.TableModel;
+import java.util.*;
 
-/**
- * @author Daniil Ovchinnikov.
- * @since 7/8/14.
- */
 public class CheckerFrameworkConfigurable implements Configurable {
 
-    private JPanel myRootPane;
-    private JBTable myAvailableCheckersTable;
-    private ComboBox myProcessorProfilesComboBox;
-    private JButton myEnableAllCheckersButton;
-    private JButton myDisableAllCheckersButton;
+    private final Map<ProcessorConfigProfile, Set<String>> myToBeAddedProcessors = new HashMap<ProcessorConfigProfile, Set<String>>();
+    private final Map<ProcessorConfigProfile, Set<String>> myTobeRemovedProcessors = new HashMap<ProcessorConfigProfile, Set<String>>();
 
-    private final Project myProject;
+    private final TableModel myCheckersModel;
+    private final ComboBoxModel myProfilesModel;
 
-    private Set<String> myActiveCheckers;
-    private Set<String> mySavedActiveCheckers;
+    private final CheckerFrameworkConfigurableUI ui;
 
-    public CheckerFrameworkConfigurable(@NotNull Project project) {
-        myProject = project;
-        reset();
+    public CheckerFrameworkConfigurable(final Project project) {
+
+        myCheckersModel = new CheckersTableModel();
+        myProfilesModel = new ProcessorProfileComboboxModel(project);
+
+        ui = new CheckerFrameworkConfigurableUI() {
+
+            @Override
+            protected TableModel getCheckersModel() {
+                return myCheckersModel;
+            }
+
+            @Override
+            protected ComboBoxModel getProfilesModel() {
+                return myProfilesModel;
+            }
+        };
     }
 
     @Nls
@@ -57,58 +59,44 @@ public class CheckerFrameworkConfigurable implements Configurable {
     @Nullable
     @Override
     public JComponent createComponent() {
-        return myRootPane;
+        return ui.getRoot();
     }
 
     @Override
     public boolean isModified() {
-        return !(
-            mySavedActiveCheckers.size() == myActiveCheckers.size()
-            && mySavedActiveCheckers.containsAll(myActiveCheckers)
-            && myActiveCheckers.containsAll(mySavedActiveCheckers)
-        );
+        return !(myToBeAddedProcessors.isEmpty() && myTobeRemovedProcessors.isEmpty());
     }
 
     @Override
     public void apply() throws ConfigurationException {
-        CheckerFrameworkSettings.getInstance(myProject).setActiveCheckers(myActiveCheckers);
-        mySavedActiveCheckers = new HashSet<String>(myActiveCheckers);
+        for (final ProcessorConfigProfile profile : myToBeAddedProcessors.keySet()) {
+            if (myToBeAddedProcessors.get(profile) == null) {
+                continue;
+            }
+            for (final String checkerClass : myToBeAddedProcessors.get(profile)) {
+                profile.addProcessor(checkerClass);
+            }
+        }
+        for (final ProcessorConfigProfile profile : myTobeRemovedProcessors.keySet()) {
+            if (myTobeRemovedProcessors.get(profile) == null) {
+                continue;
+            }
+            for (final String checkerClass : myTobeRemovedProcessors.get(profile)) {
+                profile.removeProcessor(checkerClass);
+            }
+        }
+        reset();
     }
 
     @Override
     public void reset() {
-        myActiveCheckers = new HashSet<String>(CheckerFrameworkSettings.getInstance(myProject).getActiveCheckers());
-        mySavedActiveCheckers = new HashSet<String>(myActiveCheckers);
+        myToBeAddedProcessors.clear();
+        myTobeRemovedProcessors.clear();
     }
 
     @Override
     public void disposeUIResources() {
         // nothing to do here
-    }
-
-    private void createUIComponents() {
-        myAvailableCheckersTable = new JBTable(new CheckersTableModel());
-        myAvailableCheckersTable.getColumnModel().getColumn(0).setMaxWidth(120);
-        myAvailableCheckersTable.getColumnModel().getColumn(0).setPreferredWidth(120);
-        myAvailableCheckersTable.getTableHeader().setResizingAllowed(false);
-        myAvailableCheckersTable.getTableHeader().setReorderingAllowed(false);
-
-        final CompilerConfigurationImpl compilerConfiguration = (CompilerConfigurationImpl)CompilerConfiguration.getInstance(myProject);
-        final List<ProcessorConfigProfile> configProfiles = new ArrayList<ProcessorConfigProfile>();
-        configProfiles.add(compilerConfiguration.getDefaultProcessorProfile());
-        configProfiles.addAll(compilerConfiguration.getModuleProcessorProfiles());
-        myProcessorProfilesComboBox = new ComboBox(new DefaultComboBoxModel() {
-            @Override
-            public Object getElementAt(int index) {
-                return configProfiles.get(index);
-            }
-
-            @Override
-            public int getSize() {
-                return configProfiles.size();
-            }
-        });
-        myProcessorProfilesComboBox.setSelectedIndex(0);
     }
 
     private class CheckersTableModel extends AbstractTableModel {
@@ -133,8 +121,18 @@ public class CheckerFrameworkConfigurable implements Configurable {
         @Override
         public Object getValueAt(int row, int col) {
             final Class clazz = CheckerFrameworkSettings.BUILTIN_CHECKERS.get(row);
+            final String canonicalName = clazz.getCanonicalName();
+            final ProcessorConfigProfile currentProfile = ui.getCurrentSelectedProfile();
             return col == 0
-                   ? myActiveCheckers.contains(clazz.getCanonicalName())
+                   ? (
+                         currentProfile.getProcessors().contains(canonicalName) || (
+                             myToBeAddedProcessors.containsKey(currentProfile)
+                             && myToBeAddedProcessors.get(currentProfile).contains(canonicalName)
+                         )
+                     ) && (
+                         !myTobeRemovedProcessors.containsKey(currentProfile)
+                         || !myTobeRemovedProcessors.get(currentProfile).contains(canonicalName)
+                     )
                    : clazz;
         }
 
@@ -156,14 +154,48 @@ public class CheckerFrameworkConfigurable implements Configurable {
         @Override
         public void setValueAt(Object value, int row, int col) {
             final Class<? extends AbstractTypeProcessor> clazz = CheckerFrameworkSettings.BUILTIN_CHECKERS.get(row);
-            if (Boolean.TRUE.equals(value)) {
-                myActiveCheckers.add(clazz.getCanonicalName());
-            } else {
-                myActiveCheckers.remove(clazz.getCanonicalName());
+
+            final Map<ProcessorConfigProfile, Set<String>> mapToAddTo = Boolean.TRUE.equals(value)
+                                                                        ? myToBeAddedProcessors
+                                                                        : myTobeRemovedProcessors;
+            final Map<ProcessorConfigProfile, Set<String>> mapToRemoveFrom = Boolean.TRUE.equals(value)
+                                                                             ? myTobeRemovedProcessors
+                                                                             : myToBeAddedProcessors;
+            final ProcessorConfigProfile currentProfile = ui.getCurrentSelectedProfile();
+
+            if (mapToAddTo.get(currentProfile) == null) {
+                mapToAddTo.put(currentProfile, new HashSet<String>());
             }
+            mapToAddTo.get(currentProfile).add(clazz.getCanonicalName());
+
+            if (mapToRemoveFrom.get(currentProfile) != null) {
+                mapToRemoveFrom.get(currentProfile).remove(clazz.getCanonicalName());
+                if (mapToRemoveFrom.get(currentProfile).isEmpty()) {
+                    mapToRemoveFrom.remove(currentProfile);
+                }
+            }
+
             fireTableCellUpdated(row, col);
         }
     }
+
+    private static class ProcessorProfileComboboxModel extends DefaultComboBoxModel {
+        private final List<ProcessorConfigProfile> myConfigProfiles = new ArrayList<ProcessorConfigProfile>();
+
+        private ProcessorProfileComboboxModel(Project project) {
+            final CompilerConfigurationImpl compilerConfiguration = (CompilerConfigurationImpl)CompilerConfiguration.getInstance(project);
+            myConfigProfiles.add(compilerConfiguration.getDefaultProcessorProfile());
+            myConfigProfiles.addAll(compilerConfiguration.getModuleProcessorProfiles());
+        }
+
+        @Override
+        public Object getElementAt(int index) {
+            return myConfigProfiles.get(index);
+        }
+
+        @Override
+        public int getSize() {
+            return myConfigProfiles.size();
+        }
+    }
 }
-
-
