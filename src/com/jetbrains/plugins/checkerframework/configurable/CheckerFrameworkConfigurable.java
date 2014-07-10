@@ -163,16 +163,18 @@ public class CheckerFrameworkConfigurable implements Configurable {
                                                                              : myToBeAddedProcessors;
             final ProcessorConfigProfile currentProfile = ui.getCurrentSelectedProfile();
 
-            if (mapToAddTo.get(currentProfile) == null) {
-                mapToAddTo.put(currentProfile, new HashSet<String>());
-            }
-            mapToAddTo.get(currentProfile).add(clazz.getCanonicalName());
-
+            boolean wasRemoved = false;
             if (mapToRemoveFrom.get(currentProfile) != null) {
-                mapToRemoveFrom.get(currentProfile).remove(clazz.getCanonicalName());
+                wasRemoved = mapToRemoveFrom.get(currentProfile).remove(clazz.getCanonicalName());
                 if (mapToRemoveFrom.get(currentProfile).isEmpty()) {
                     mapToRemoveFrom.remove(currentProfile);
                 }
+            }
+            if (!wasRemoved) {
+                if (mapToAddTo.get(currentProfile) == null) {
+                    mapToAddTo.put(currentProfile, new HashSet<String>());
+                }
+                mapToAddTo.get(currentProfile).add(clazz.getCanonicalName());
             }
 
             fireTableCellUpdated(row, col);

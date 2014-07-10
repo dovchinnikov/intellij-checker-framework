@@ -1,7 +1,8 @@
 package com.jetbrains.plugins.checkerframework.configurable;
 
-import com.intellij.openapi.components.*;
-import com.intellij.openapi.project.Project;
+import com.intellij.openapi.components.State;
+import com.intellij.openapi.components.Storage;
+import com.intellij.openapi.components.StoragePathMacros;
 import org.checkerframework.checker.compilermsgs.CompilerMessagesChecker;
 import org.checkerframework.checker.fenum.FenumChecker;
 import org.checkerframework.checker.formatter.FormatterChecker;
@@ -21,13 +22,9 @@ import org.checkerframework.checker.tainting.TaintingChecker;
 import org.checkerframework.checker.units.UnitsChecker;
 import org.checkerframework.common.subtyping.SubtypingChecker;
 import org.checkerframework.framework.source.SourceChecker;
-import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
 
 import java.util.Arrays;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Set;
 
 @State(
     name = "CheckerFrameworkPluginSettings",
@@ -38,7 +35,7 @@ import java.util.Set;
         )
     }
 )
-public class CheckerFrameworkSettings implements PersistentStateComponent<CheckerFrameworkSettings.Settings> {
+public class CheckerFrameworkSettings {
 
     public static final List<Class<? extends SourceChecker>> BUILTIN_CHECKERS = Arrays.asList(
         NullnessChecker.class,
@@ -60,47 +57,4 @@ public class CheckerFrameworkSettings implements PersistentStateComponent<Checke
         JavariChecker.class,
         SubtypingChecker.class
     );
-
-    private Set<String> myActiveCheckers;
-
-    public CheckerFrameworkSettings() {
-        this.myActiveCheckers = new HashSet<String>();
-    }
-
-    @Nullable
-    @Override
-    public Settings getState() {
-        return new Settings(myActiveCheckers);
-    }
-
-    @Override
-    public void loadState(Settings state) {
-        myActiveCheckers.clear();
-        myActiveCheckers.addAll(state.myActiveCheckers);
-    }
-
-    public Set<String> getActiveCheckers() {
-        return myActiveCheckers;
-    }
-
-    public void setActiveCheckers(Set<String> activeCheckers) {
-        myActiveCheckers = activeCheckers;
-    }
-
-    @NotNull
-    public static CheckerFrameworkSettings getInstance(@NotNull Project project) {
-        return ServiceManager.getService(project, CheckerFrameworkSettings.class);
-    }
-
-    public static class Settings {
-        public Set<String> myActiveCheckers;
-
-        public Settings() {
-            myActiveCheckers = new HashSet<String>();
-        }
-
-        public Settings(Set<String> activeCheckers) {
-            myActiveCheckers = activeCheckers;
-        }
-    }
 }
