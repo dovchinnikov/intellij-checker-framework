@@ -19,15 +19,14 @@ import java.util.List;
 
 public class CheckerFrameworkConfigurable implements Configurable {
 
-    private final Project myProject;
-
     private final MultiMap<ProcessorConfigProfile, String> myToBeAddedProcessors = new MultiMap<ProcessorConfigProfile, String>();
     private final MultiMap<ProcessorConfigProfile, String> myTobeRemovedProcessors = new MultiMap<ProcessorConfigProfile, String>();
 
+    private final ComboBoxModel myProfilesModel;
     private CheckerFrameworkConfigurableUI myUI;
 
     public CheckerFrameworkConfigurable(final Project project) {
-        myProject = project;
+        myProfilesModel = new ProcessorProfileComboboxModel(project);
     }
 
     @Nls
@@ -82,7 +81,6 @@ public class CheckerFrameworkConfigurable implements Configurable {
     private CheckerFrameworkConfigurableUI getUI() {
         if (myUI == null) {
             final TableModel myCheckersModel = new CheckersTableModel();
-            final ComboBoxModel myProfilesModel = new ProcessorProfileComboboxModel(myProject);
             myUI = new CheckerFrameworkConfigurableUI() {
                 @Override
                 protected TableModel getCheckersModel() {
@@ -121,7 +119,7 @@ public class CheckerFrameworkConfigurable implements Configurable {
         public Object getValueAt(int row, int col) {
             final Class clazz = CheckerFrameworkSettings.BUILTIN_CHECKERS.get(row);
             final String canonicalName = clazz.getCanonicalName();
-            final ProcessorConfigProfile currentProfile = getUI().getCurrentSelectedProfile();
+            final ProcessorConfigProfile currentProfile = getCurrentSelectedProfile();
             return col == 0
                    ? (
                          currentProfile.getProcessors().contains(canonicalName) || (
@@ -152,6 +150,8 @@ public class CheckerFrameworkConfigurable implements Configurable {
 
         @Override
         public void setValueAt(Object value, int row, int col) {
+            if (value.equals(getValueAt(row, col))) return;
+
             final Class<? extends AbstractTypeProcessor> clazz = CheckerFrameworkSettings.BUILTIN_CHECKERS.get(row);
 
             final MultiMap<ProcessorConfigProfile, String> mapToAddTo = Boolean.TRUE.equals(value)
@@ -160,13 +160,17 @@ public class CheckerFrameworkConfigurable implements Configurable {
             final MultiMap<ProcessorConfigProfile, String> mapToRemoveFrom = Boolean.TRUE.equals(value)
                                                                              ? myTobeRemovedProcessors
                                                                              : myToBeAddedProcessors;
-            final ProcessorConfigProfile currentProfile = getUI().getCurrentSelectedProfile();
+            final ProcessorConfigProfile currentProfile = getCurrentSelectedProfile();
 
             if (!mapToRemoveFrom.get(currentProfile).remove(clazz.getCanonicalName())) {
                 mapToAddTo.putValue(currentProfile, clazz.getCanonicalName());
             }
 
             fireTableCellUpdated(row, col);
+        }
+
+        private ProcessorConfigProfile getCurrentSelectedProfile() {
+            return (ProcessorConfigProfile)myProfilesModel.getSelectedItem();
         }
     }
 

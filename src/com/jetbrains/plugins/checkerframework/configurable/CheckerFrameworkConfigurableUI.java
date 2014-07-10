@@ -2,10 +2,10 @@ package com.jetbrains.plugins.checkerframework.configurable;
 
 import com.intellij.openapi.ui.ComboBox;
 import com.intellij.ui.table.JBTable;
-import org.jetbrains.jps.model.java.compiler.ProcessorConfigProfile;
 
 import javax.swing.*;
 import javax.swing.table.TableModel;
+import java.awt.event.ActionEvent;
 
 /**
  * @author Daniil Ovchinnikov.
@@ -18,6 +18,25 @@ public abstract class CheckerFrameworkConfigurableUI {
     private ComboBox myProcessorProfilesComboBox;
     private JButton myEnableAllCheckersButton;
     private JButton myDisableAllCheckersButton;
+
+    public CheckerFrameworkConfigurableUI() {
+        myEnableAllCheckersButton.addActionListener(new AbstractAction() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                for (int i = 0; i < myAvailableCheckersTable.getRowCount(); i++) {
+                    myAvailableCheckersTable.setValueAt(true, i, 0);
+                }
+            }
+        });
+        myDisableAllCheckersButton.addActionListener(new AbstractAction() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                for (int i = 0; i < myAvailableCheckersTable.getRowCount(); i++) {
+                    myAvailableCheckersTable.setValueAt(false, i, 0);
+                }
+            }
+        });
+    }
 
     public JComponent getRoot() {
         return myRootPane;
@@ -36,10 +55,6 @@ public abstract class CheckerFrameworkConfigurableUI {
 
         myProcessorProfilesComboBox = new ComboBox(getProfilesModel());
         myProcessorProfilesComboBox.setSelectedIndex(0);
-    }
-
-    public ProcessorConfigProfile getCurrentSelectedProfile() {
-        return (ProcessorConfigProfile)myProcessorProfilesComboBox.getSelectedObjects()[0];
     }
 }
 
