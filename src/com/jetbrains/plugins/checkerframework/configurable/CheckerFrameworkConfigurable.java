@@ -119,7 +119,7 @@ public class CheckerFrameworkConfigurable implements Configurable {
         public Object getValueAt(int row, int col) {
             final Class clazz = CheckerFrameworkSettings.BUILTIN_CHECKERS.get(row);
             final String canonicalName = clazz.getCanonicalName();
-            final ProcessorConfigProfile currentProfile = getCurrentSelectedProfile();
+            final ProcessorConfigProfile currentProfile = getUI().getCurrentSelectedProfile();
             return col == 0
                    ? (
                          currentProfile.getProcessors().contains(canonicalName) || (
@@ -160,17 +160,13 @@ public class CheckerFrameworkConfigurable implements Configurable {
             final MultiMap<ProcessorConfigProfile, String> mapToRemoveFrom = Boolean.TRUE.equals(value)
                                                                              ? myTobeRemovedProcessors
                                                                              : myToBeAddedProcessors;
-            final ProcessorConfigProfile currentProfile = getCurrentSelectedProfile();
+            final ProcessorConfigProfile currentProfile = getUI().getCurrentSelectedProfile();
 
             if (!mapToRemoveFrom.get(currentProfile).remove(clazz.getCanonicalName())) {
                 mapToAddTo.putValue(currentProfile, clazz.getCanonicalName());
             }
 
             fireTableCellUpdated(row, col);
-        }
-
-        private ProcessorConfigProfile getCurrentSelectedProfile() {
-            return (ProcessorConfigProfile)myProfilesModel.getSelectedItem();
         }
     }
 
