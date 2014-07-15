@@ -35,37 +35,38 @@ public class RegexPointlessPlacementInspection extends AbstractBaseJavaLocalInsp
         file.accept(new JavaRecursiveElementWalkingVisitor() {
             @Override
             public void visitAnnotation(PsiAnnotation annotation) {
-                if (Regex.class.getCanonicalName().equals(annotation.getQualifiedName())) {
-                    final PsiAnnotationOwner owner = annotation.getOwner();
-                    PsiModifierListOwner modifierListOwner = null;
-                    PsiType annotatedType = null;
-                    if (owner instanceof PsiModifierList) {
-                        final PsiModifierList modifierList = (PsiModifierList)owner;
-                        modifierListOwner = (PsiModifierListOwner)modifierList.getContext();
-                        if (modifierListOwner instanceof PsiVariable) {
-                            annotatedType = ((PsiVariable)modifierListOwner).getType();
-                        } else if (modifierListOwner instanceof PsiMethod) {
-                            annotatedType = ((PsiMethod)modifierListOwner).getReturnType();
-                        }
-                    } else if (owner instanceof PsiTypeElement) {
-                        annotatedType = ((PsiTypeElement)owner).getType();
-                    } else if (owner instanceof PsiType) {
-                        annotatedType = (PsiType)owner;
-                    }
-                    while (annotatedType instanceof PsiArrayType) {
-                        annotatedType = ((PsiArrayType)annotatedType).getComponentType();
-                    }
-                    if (annotatedType != null) {
-                        if (APPLICABLE_CLASSES.contains(annotatedType.getCanonicalText())) {
-                            return;
-                        }
-                    }
-                    problems.add(
-                        manager.createProblemDescriptor(annotation, "#ref doesn't make sense here", true,
-                                                        ProblemHighlightType.WEAK_WARNING, isOnTheFly,
-                                                        new RemoveAnnotationQuickFix(annotation, modifierListOwner))
-                    );
+                if (!Regex.class.getCanonicalName().equals(annotation.getQualifiedName())) {
+                    return;
                 }
+                final PsiAnnotationOwner owner = annotation.getOwner();
+                PsiModifierListOwner modifierListOwner = null;
+                PsiType annotatedType = null;
+                if (owner instanceof PsiModifierList) {
+                    final PsiModifierList modifierList = (PsiModifierList)owner;
+                    modifierListOwner = (PsiModifierListOwner)modifierList.getContext();
+                    if (modifierListOwner instanceof PsiVariable) {
+                        annotatedType = ((PsiVariable)modifierListOwner).getType();
+                    } else if (modifierListOwner instanceof PsiMethod) {
+                        annotatedType = ((PsiMethod)modifierListOwner).getReturnType();
+                    }
+                } else if (owner instanceof PsiTypeElement) {
+                    annotatedType = ((PsiTypeElement)owner).getType();
+                } else if (owner instanceof PsiType) {
+                    annotatedType = (PsiType)owner;
+                }
+                while (annotatedType instanceof PsiArrayType) {
+                    annotatedType = ((PsiArrayType)annotatedType).getComponentType();
+                }
+                if (annotatedType != null) {
+                    if (APPLICABLE_CLASSES.contains(annotatedType.getCanonicalText())) {
+                        return;
+                    }
+                }
+                problems.add(
+                    manager.createProblemDescriptor(annotation, "#ref doesn't make sense here", true,
+                                                    ProblemHighlightType.WEAK_WARNING, isOnTheFly,
+                                                    new RemoveAnnotationQuickFix(annotation, modifierListOwner))
+                );
             }
         });
 
