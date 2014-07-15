@@ -11,6 +11,16 @@
     <extensions defaultExtensionNs="com.intellij">
         <projectService serviceImplementation="com.jetbrains.plugins.checkerframework.configurable.CheckerFrameworkSettings"/>
         <projectConfigurable instance="com.jetbrains.plugins.checkerframework.configurable.CheckerFrameworkConfigurable"/>
+
+        <localInspection
+            bundle="resources.CheckerFramework"
+            key="regex.pointless"
+            shortName="RegexPointlessPlacement"
+            groupName="Checker Framework"
+            level="WARNING"
+            language="JAVA"
+            enabledByDefault="true"
+            implementationClass="com.jetbrains.plugins.checkerframework.inspection.RegexPointlessPlacementInspection"/>
     </extensions>
 
 </idea-plugin>
