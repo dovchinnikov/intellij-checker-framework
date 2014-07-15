@@ -23,12 +23,6 @@ public class RegexPointlessPlacementInspection extends AbstractBaseJavaLocalInsp
 
     @Nullable
     @Override
-    public ProblemDescriptor[] checkClass(@NotNull PsiClass aClass, @NotNull InspectionManager manager, boolean isOnTheFly) {
-        return super.checkClass(aClass, manager, isOnTheFly);
-    }
-
-    @Nullable
-    @Override
     public ProblemDescriptor[] checkFile(@NotNull PsiFile file, @NotNull final InspectionManager manager, final boolean isOnTheFly) {
         final List<ProblemDescriptor> problems = new ArrayList<ProblemDescriptor>();
 
@@ -49,14 +43,15 @@ public class RegexPointlessPlacementInspection extends AbstractBaseJavaLocalInsp
                     } else if (modifierListOwner instanceof PsiMethod) {
                         annotatedType = ((PsiMethod)modifierListOwner).getReturnType();
                     }
+                    while (annotatedType instanceof PsiArrayType) {
+                        annotatedType = ((PsiArrayType)annotatedType).getComponentType();
+                    }
                 } else if (owner instanceof PsiTypeElement) {
                     annotatedType = ((PsiTypeElement)owner).getType();
                 } else if (owner instanceof PsiType) {
                     annotatedType = (PsiType)owner;
                 }
-                while (annotatedType instanceof PsiArrayType) {
-                    annotatedType = ((PsiArrayType)annotatedType).getComponentType();
-                }
+
                 if (annotatedType != null) {
                     if (APPLICABLE_CLASSES.contains(annotatedType.getCanonicalText())) {
                         return;
