@@ -59,7 +59,7 @@ public class RegexUselessPlacementInspection extends AbstractBaseJavaLocalInspec
                 }
                 problems.add(
                     manager.createProblemDescriptor(annotation, "#ref doesn't make sense here", true,
-                                                    ProblemHighlightType.WEAK_WARNING, isOnTheFly,
+                                                    ProblemHighlightType.LIKE_UNUSED_SYMBOL, isOnTheFly,
                                                     new RemoveAnnotationQuickFix(annotation, modifierListOwner))
                 );
             }
