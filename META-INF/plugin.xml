@@ -14,13 +14,13 @@
 
         <localInspection
             bundle="resources.CheckerFramework"
-            key="regex.pointless"
-            shortName="RegexPointlessPlacement"
+            key="regex.useless.placement"
+            shortName="RegexUselessPlacement"
             groupName="Checker Framework"
             level="WARNING"
             language="JAVA"
             enabledByDefault="true"
-            implementationClass="com.jetbrains.plugins.checkerframework.inspection.RegexPointlessPlacementInspection"/>
+            implementationClass="com.jetbrains.plugins.checkerframework.inspection.RegexUselessPlacementInspection"/>
     </extensions>
 
 </idea-plugin>

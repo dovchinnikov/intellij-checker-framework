@@ -10,7 +10,7 @@ import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-public class RegexPointlessPlacementInspection extends AbstractBaseJavaLocalInspectionTool {
+public class RegexUselessPlacementInspection extends AbstractBaseJavaLocalInspectionTool {
 
     private static final Set<String> APPLICABLE_CLASSES = new HashSet<String>(
         Arrays.asList(
