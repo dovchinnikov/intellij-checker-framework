@@ -7,6 +7,7 @@ import com.intellij.codeInspection.ProblemHighlightType;
 import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiFile;
+import com.jetbrains.plugins.checkerframework.inspection.util.VirtualJavaFileObject;
 import org.checkerframework.checker.regex.RegexChecker;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -50,16 +51,15 @@ public class AwesomeInspection extends AbstractBaseJavaLocalInspectionTool {
     @Nullable
     @Override
     public ProblemDescriptor[] checkFile(@NotNull PsiFile file, @NotNull InspectionManager manager, boolean isOnTheFly) {
-        final Iterable<? extends JavaFileObject> sources = FILE_MANAGER.getJavaFileObjects(
-            file.getVirtualFile().getCanonicalPath()
-        );
         final DiagnosticCollector<JavaFileObject> diagnosticCollector = new DiagnosticCollector<JavaFileObject>();
         final CompilationTask task = JAVA_COMPILER.getTask(
             null, FILE_MANAGER, diagnosticCollector,
             Arrays.asList(
                 "-proc:only",
                 "-classpath", "/opt/checker-framework-1.8.3/checker/dist/checker-qual.jar"
-            ), null, sources
+            ),
+            null,
+            Arrays.asList(new VirtualJavaFileObject(file))
         );
         task.setProcessors(Arrays.asList(new RegexChecker()));
         task.call();
@@ -68,18 +68,18 @@ public class AwesomeInspection extends AbstractBaseJavaLocalInspectionTool {
         for (Diagnostic<? extends JavaFileObject> diagnostic : diagnosticCollector.getDiagnostics()) {
             final PsiElement startElement = file.findElementAt((int)diagnostic.getStartPosition());
             final PsiElement endElement = file.findElementAt((int)diagnostic.getEndPosition() - 1);
-            if (startElement != null && endElement != null) {
+            if (startElement != null
+                && endElement != null
+                && startElement.getTextRange().getStartOffset() < endElement.getTextRange().getEndOffset()) {
                 problems.add(
                     manager.createProblemDescriptor(
                         startElement,
                         endElement,
                         diagnostic.getMessage(Locale.getDefault()),
-                        ProblemHighlightType.GENERIC_ERROR,
+                        ProblemHighlightType.ERROR,
                         isOnTheFly
                     )
                 );
-            } else {
-                LOG.warn("start or end element not found");
             }
         }
         return problems.toArray(new ProblemDescriptor[problems.size()]);
