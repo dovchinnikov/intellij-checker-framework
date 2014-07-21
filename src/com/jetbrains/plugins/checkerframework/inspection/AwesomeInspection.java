@@ -11,8 +11,10 @@ import com.jetbrains.plugins.checkerframework.inspection.util.VirtualJavaFileObj
 import org.checkerframework.checker.regex.RegexChecker;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+import org.jetbrains.jps.cmdline.ClasspathBootstrap;
 
 import javax.tools.*;
+import java.io.File;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -47,17 +49,23 @@ public class AwesomeInspection extends AbstractBaseJavaLocalInspectionTool {
     }
 
     private static final StandardJavaFileManager FILE_MANAGER = JAVA_COMPILER.getStandardFileManager(null, null, null);
+    private static final List<String> COMPILE_OPTIONS = Arrays.asList(
+        "-proc:only",
+        "-classpath",
+        "/opt/checker-framework-1.8.3/checker/dist/checker-qual.jar"
+        + File.pathSeparator
+        + ClasspathBootstrap.getResourcePath(JAVA_COMPILER.getClass())
+    );
 
     @Nullable
     @Override
     public ProblemDescriptor[] checkFile(@NotNull PsiFile file, @NotNull InspectionManager manager, boolean isOnTheFly) {
         final DiagnosticCollector<JavaFileObject> diagnosticCollector = new DiagnosticCollector<JavaFileObject>();
         final CompilationTask task = JAVA_COMPILER.getTask(
-            null, FILE_MANAGER, diagnosticCollector,
-            Arrays.asList(
-                "-proc:only",
-                "-classpath", "/opt/checker-framework-1.8.3/checker/dist/checker-qual.jar"
-            ),
+            null,
+            FILE_MANAGER,
+            diagnosticCollector,
+            COMPILE_OPTIONS,
             null,
             Arrays.asList(new VirtualJavaFileObject(file))
         );
