@@ -3,109 +3,85 @@ package com.jetbrains.plugins.checkerframework.inspection;
 import com.intellij.codeInspection.AbstractBaseJavaLocalInspectionTool;
 import com.intellij.codeInspection.InspectionManager;
 import com.intellij.codeInspection.ProblemDescriptor;
-import com.intellij.psi.PsiClass;
+import com.intellij.codeInspection.ProblemHighlightType;
+import com.intellij.openapi.diagnostic.Logger;
+import com.intellij.psi.PsiElement;
+import com.intellij.psi.PsiFile;
 import org.checkerframework.checker.regex.RegexChecker;
-import org.checkerframework.checker.regex.qual.Regex;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
-import javax.annotation.processing.Messager;
-import javax.annotation.processing.ProcessingEnvironment;
-import javax.annotation.processing.Processor;
 import javax.tools.*;
-import java.io.File;
-import java.io.IOException;
-import java.lang.reflect.InvocationHandler;
-import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Method;
-import java.lang.reflect.Proxy;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
+import java.util.Locale;
+
+import static javax.tools.JavaCompiler.*;
 
 /**
  * @author Daniil Ovchinnikov
  * @since 7/17/14
  */
-@Regex
 public class AwesomeInspection extends AbstractBaseJavaLocalInspectionTool {
 
-    private final @Regex JavaCompiler myJavac = ToolProvider.getSystemJavaCompiler();
-    private final StandardJavaFileManager myFileManager = myJavac.getStandardFileManager(null, null, null);
-    private final Processor myProcessor = new RegexChecker();
+    private static final Logger LOG = Logger.getInstance(AwesomeInspection.class);
+    private static final JavaCompiler JAVA_COMPILER;
+
+    static {
+        try {
+            JAVA_COMPILER = (JavaCompiler)Class.forName(
+                ToolProvider.getSystemJavaCompiler().getClass().getCanonicalName()
+            ).newInstance();
+        } catch (InstantiationException e) {
+            LOG.error(e);
+            throw new RuntimeException(e);
+        } catch (IllegalAccessException e) {
+            LOG.error(e);
+            throw new RuntimeException(e);
+        } catch (ClassNotFoundException e) {
+            LOG.error(e);
+            throw new RuntimeException(e);
+        }
+    }
+
+    private static final StandardJavaFileManager FILE_MANAGER = JAVA_COMPILER.getStandardFileManager(null, null, null);
 
     @Nullable
     @Override
-    public ProblemDescriptor[] checkClass(@NotNull PsiClass aClass, @NotNull InspectionManager manager, boolean isOnTheFly) {
-        Iterable<? extends JavaFileObject> sources = myFileManager.getJavaFileObjects(aClass.getContainingFile().getVirtualFile().getCanonicalPath());
-        DiagnosticCollector<JavaFileObject> l = new DiagnosticCollector<JavaFileObject>();
-        JavaCompiler.CompilationTask task = myJavac.getTask(null, myFileManager, l, null, null, sources);
-        task.setProcessors(Arrays.asList(myProcessor));
-        task.call();
-        for (Diagnostic d : l.getDiagnostics()) {
-            System.out.println(d);
-        }
-        return null;
-    }
-
-    public static void main(String[] args) throws IOException {
-        new AwesomeInspection().doStuff();
-
-    }
-
-    public void doStuff() throws IOException {
-        Iterable<? extends JavaFileObject> sources = myFileManager.getJavaFileObjects(new File("src" + File.separator + AwesomeInspection.class.getCanonicalName().replace('.', File.separatorChar) + ".java").getCanonicalFile());
-        DiagnosticCollector<JavaFileObject> l = new DiagnosticCollector<JavaFileObject>();
-        JavaCompiler.CompilationTask task = myJavac.getTask(null, myFileManager, l, null, null, sources);
-
-        final Processor processor = new RegexChecker();
-        Processor processorProxy = (Processor) Proxy.newProxyInstance(
-                Processor.class.getClassLoader(),
-                new Class[]{
-                        Processor.class
-                },
-                new InvocationHandler() {
-                    @Override
-                    public Object invoke(Object proxy, Method method, final Object[] args) throws Throwable {
-                        if (method.getName().equals("init")) {
-                            final Object processingEnvironment = args[0];
-                            args[0] = Proxy.newProxyInstance(
-                                    ProcessingEnvironment.class.getClassLoader(),
-                                    new Class[]{ProcessingEnvironment.class},
-                                    new InvocationHandler() {
-                                        @Override
-                                        public Object invoke(Object proxy, Method method, Object[] args) throws Throwable {
-                                            final Object originalMessager = method.invoke(processingEnvironment, args);
-                                            return method.getName().equals("getMessager") ? Proxy.newProxyInstance(
-                                                    Messager.class.getClassLoader(),
-                                                    new Class[]{Messager.class},
-                                                    new InvocationHandler() {
-                                                        @Override
-                                                        public Object invoke(Object proxy, Method method, Object[] args) throws Throwable {
-                                                            if (method.getName().equals("message")) {
-                                                                System.out.println(Arrays.toString(args));
-                                                            }
-                                                            return method.invoke(originalMessager, args);
-                                                        }
-                                                    }
-                                            ) : originalMessager;
-                                        }
-                                    }
-                            );
-                        }
-                        try {
-                            return method.invoke(processor, args);
-                        } catch (InvocationTargetException e) {
-                            throw e.getCause();
-                        }
-                    }
-                }
+    public ProblemDescriptor[] checkFile(@NotNull PsiFile file, @NotNull InspectionManager manager, boolean isOnTheFly) {
+        final Iterable<? extends JavaFileObject> sources = FILE_MANAGER.getJavaFileObjects(
+            file.getVirtualFile().getCanonicalPath()
         );
-
-        task.setProcessors(Arrays.asList(processorProxy));
+        final DiagnosticCollector<JavaFileObject> diagnosticCollector = new DiagnosticCollector<JavaFileObject>();
+        final CompilationTask task = JAVA_COMPILER.getTask(
+            null, FILE_MANAGER, diagnosticCollector,
+            Arrays.asList(
+                "-proc:only",
+                "-classpath", "/opt/checker-framework-1.8.3/checker/dist/checker-qual.jar"
+            ), null, sources
+        );
+        task.setProcessors(Arrays.asList(new RegexChecker()));
         task.call();
 
-//        for (Diagnostic d : l.getDiagnostics()) {
-//            System.out.println(d);
-//        }
+        final List<ProblemDescriptor> problems = new ArrayList<ProblemDescriptor>();
+        for (Diagnostic<? extends JavaFileObject> diagnostic : diagnosticCollector.getDiagnostics()) {
+            final PsiElement startElement = file.findElementAt((int)diagnostic.getStartPosition());
+            final PsiElement endElement = file.findElementAt((int)diagnostic.getEndPosition() - 1);
+            if (startElement != null && endElement != null) {
+                problems.add(
+                    manager.createProblemDescriptor(
+                        startElement,
+                        endElement,
+                        diagnostic.getMessage(Locale.getDefault()),
+                        ProblemHighlightType.GENERIC_ERROR,
+                        isOnTheFly
+                    )
+                );
+            } else {
+                LOG.warn("start or end element not found");
+            }
+        }
+        return problems.toArray(new ProblemDescriptor[problems.size()]);
     }
-
 }
