@@ -40,7 +40,7 @@ import java.util.Set;
 )
 public class CheckerFrameworkSettings implements PersistentStateComponent<CheckerFrameworkSettings> {
 
-    public static final List<Class<? extends SourceChecker>> BUILTIN_CHECKERS = Arrays.asList(
+    private static final List<Class<? extends SourceChecker>> BUILTIN_CHECKERS = Arrays.asList(
         NullnessChecker.class,
         NullnessRawnessChecker.class,
         InterningChecker.class,
@@ -63,6 +63,10 @@ public class CheckerFrameworkSettings implements PersistentStateComponent<Checke
 
     public static CheckerFrameworkSettings getInstance(Project project) {
         return ServiceManager.getService(project, CheckerFrameworkSettings.class);
+    }
+
+    public static List<Class<? extends SourceChecker>> getAvailableCheckers() {
+        return BUILTIN_CHECKERS;
     }
 
     private @NotNull String myPathToCheckerJar;

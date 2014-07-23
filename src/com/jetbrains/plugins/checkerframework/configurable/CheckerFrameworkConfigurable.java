@@ -101,12 +101,12 @@ public class CheckerFrameworkConfigurable implements Configurable {
 
         @Override
         public int getRowCount() {
-            return CheckerFrameworkSettings.BUILTIN_CHECKERS.size();
+            return CheckerFrameworkSettings.getAvailableCheckers().size();
         }
 
         @Override
         public Object getValueAt(int row, int col) {
-            final Class clazz = CheckerFrameworkSettings.BUILTIN_CHECKERS.get(row);
+            final Class clazz = CheckerFrameworkSettings.getAvailableCheckers().get(row);
             final String canonicalName = clazz.getCanonicalName();
             return col == 0
                    ? (mySettings.getEnabledCheckers().contains(canonicalName) || myToBeEnabledProcessors.contains(canonicalName))
@@ -135,7 +135,7 @@ public class CheckerFrameworkConfigurable implements Configurable {
                 return;
             }
 
-            final Class<? extends AbstractTypeProcessor> clazz = CheckerFrameworkSettings.BUILTIN_CHECKERS.get(row);
+            final Class<? extends AbstractTypeProcessor> clazz = CheckerFrameworkSettings.getAvailableCheckers().get(row);
             final Set<String> setToAddTo = Boolean.TRUE.equals(value) ? myToBeEnabledProcessors : myToBeDisabledProcessors;
             final Set<String> setToRemoveFrom = Boolean.TRUE.equals(value) ? myToBeDisabledProcessors : myToBeEnabledProcessors;
 
