@@ -1,5 +1,8 @@
 package com.jetbrains.plugins.checkerframework.configurable;
 
+import com.intellij.openapi.fileChooser.FileChooserDescriptor;
+import com.intellij.openapi.ui.ComponentWithBrowseButton;
+import com.intellij.openapi.ui.TextComponentAccessor;
 import com.intellij.openapi.ui.TextFieldWithBrowseButton;
 import com.intellij.ui.table.JBTable;
 
@@ -8,6 +11,8 @@ import javax.swing.table.TableModel;
 import java.awt.event.ActionEvent;
 
 public abstract class CheckerFrameworkConfigurableUI {
+
+    private static final FileChooserDescriptor JAR_DESCRIPTOR = new FileChooserDescriptor(false, false, true, true, false, false);
 
     private JPanel myRootPane;
     private JBTable myAvailableCheckersTable;
@@ -32,6 +37,17 @@ public abstract class CheckerFrameworkConfigurableUI {
                 }
             }
         });
+        myPathToCheckerJarField.addBrowseFolderListener(
+            null,
+            new ComponentWithBrowseButton.BrowseFolderActionListener<JTextField>(
+                null,
+                "Select path to checker.jar",
+                myPathToCheckerJarField,
+                null,
+                JAR_DESCRIPTOR,
+                TextComponentAccessor.TEXT_FIELD_WHOLE_TEXT
+            )
+        );
     }
 
     public JComponent getRoot() {
