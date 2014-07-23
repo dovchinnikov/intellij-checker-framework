@@ -1,8 +1,7 @@
 package com.jetbrains.plugins.checkerframework.configurable;
 
-import com.intellij.openapi.components.State;
-import com.intellij.openapi.components.Storage;
-import com.intellij.openapi.components.StoragePathMacros;
+import com.intellij.openapi.components.*;
+import com.intellij.openapi.project.Project;
 import org.checkerframework.checker.compilermsgs.CompilerMessagesChecker;
 import org.checkerframework.checker.fenum.FenumChecker;
 import org.checkerframework.checker.formatter.FormatterChecker;
@@ -22,9 +21,13 @@ import org.checkerframework.checker.tainting.TaintingChecker;
 import org.checkerframework.checker.units.UnitsChecker;
 import org.checkerframework.common.subtyping.SubtypingChecker;
 import org.checkerframework.framework.source.SourceChecker;
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.Arrays;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 @State(
     name = "CheckerFrameworkPluginSettings",
@@ -35,7 +38,7 @@ import java.util.List;
         )
     }
 )
-public class CheckerFrameworkSettings {
+public class CheckerFrameworkSettings implements PersistentStateComponent<CheckerFrameworkSettings> {
 
     public static final List<Class<? extends SourceChecker>> BUILTIN_CHECKERS = Arrays.asList(
         NullnessChecker.class,
@@ -57,4 +60,46 @@ public class CheckerFrameworkSettings {
         JavariChecker.class,
         SubtypingChecker.class
     );
+
+    public static CheckerFrameworkSettings getInstance(Project project) {
+        return ServiceManager.getService(project, CheckerFrameworkSettings.class);
+    }
+
+    private @NotNull String myPathToCheckerJar;
+    private @NotNull Set<String> myEnabledCheckers;
+
+    public CheckerFrameworkSettings() {
+        myPathToCheckerJar = "";
+        myEnabledCheckers = new HashSet<String>();
+    }
+
+    @NotNull
+    public String getPathToCheckerJar() {
+        return myPathToCheckerJar;
+    }
+
+    public void setPathToCheckerJar(@NotNull String pathToCheckerJar) {
+        myPathToCheckerJar = pathToCheckerJar;
+    }
+
+    @NotNull
+    public Set<String> getEnabledCheckers() {
+        return myEnabledCheckers;
+    }
+
+    public void setEnabledCheckers(@NotNull Set<String> enabledCheckers) {
+        myEnabledCheckers = enabledCheckers;
+    }
+
+    @Nullable
+    @Override
+    public CheckerFrameworkSettings getState() {
+        return this;
+    }
+
+    @Override
+    public void loadState(CheckerFrameworkSettings state) {
+        this.myPathToCheckerJar = state.myPathToCheckerJar;
+        this.myEnabledCheckers = state.myEnabledCheckers;
+    }
 }

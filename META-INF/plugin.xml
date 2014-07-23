@@ -13,14 +13,14 @@
         <projectConfigurable instance="com.jetbrains.plugins.checkerframework.configurable.CheckerFrameworkConfigurable"/>
 
         <localInspection
-                bundle="resources.CheckerFramework"
-                key="regex.useless.placement"
-                shortName="RegexUselessPlacement"
-                groupName="Checker Framework"
-                level="WARNING"
-                language="JAVA"
-                enabledByDefault="true"
-                implementationClass="com.jetbrains.plugins.checkerframework.inspection.RegexUselessPlacementInspection"/>
+            bundle="resources.CheckerFramework"
+            key="regex.useless.placement"
+            shortName="RegexUselessPlacement"
+            groupName="Checker Framework"
+            level="WARNING"
+            language="JAVA"
+            enabledByDefault="true"
+            implementationClass="com.jetbrains.plugins.checkerframework.inspection.RegexUselessPlacementInspection"/>
 
         <localInspection displayName="Awesome Inspection"
                          groupName="Checker Framework"
