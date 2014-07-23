@@ -1,7 +1,7 @@
 package com.jetbrains.plugins.checkerframework.configurable;
 
 import com.intellij.openapi.diagnostic.Logger;
-import com.intellij.openapi.util.text.StringUtil;
+import org.jetbrains.annotations.NonNls;
 import org.jetbrains.annotations.NotNull;
 
 import java.io.File;
@@ -28,7 +28,7 @@ public class ClassScanner {
      */
     public static
     @NotNull
-    <T> List<Class<? extends T>> findChildren(final @NotNull Class<T> superclass, final String packageRestriction) {
+    <T> List<Class<? extends T>> findChildren(final @NotNull Class<T> superclass, @NotNull final String packageRestriction) {
         final List<Class<? extends T>> result = new ArrayList<Class<? extends T>>();
         final String superclassURL = superclass.getResource("").toString();
 
@@ -45,14 +45,20 @@ public class ClassScanner {
             for (final JarEntry entry : Collections.list(jar.entries())) {
                 if (!entry.isDirectory() && entry.toString().endsWith(".class")) {
                     try {
-                        final String clazzName = entry.toString()
+                        @NonNls final String clazzName = entry.toString()
                             .replaceAll(File.separator, ".")
                             .replace(".class", "");
-                        if (!StringUtil.isEmptyOrSpaces(packageRestriction)
-                            && !clazzName.startsWith(packageRestriction)) {
+
+                        final String caseIgnoredClazzName = clazzName.toLowerCase();
+                        if (!caseIgnoredClazzName.startsWith(packageRestriction)
+                            || caseIgnoredClazzName.contains("sub")
+                            || caseIgnoredClazzName.contains("abstract")
+                            || caseIgnoredClazzName.contains("adapter")) {
                             continue;
                         }
+
                         final Class<? extends T> clazz = Class.forName(clazzName).asSubclass(superclass);
+
                         if (!Modifier.isAbstract(clazz.getModifiers()) && !clazz.isAnonymousClass()) {
                             result.add(clazz);
                         }
