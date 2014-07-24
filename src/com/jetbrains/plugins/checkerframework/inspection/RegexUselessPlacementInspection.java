@@ -2,7 +2,6 @@ package com.jetbrains.plugins.checkerframework.inspection;
 
 import com.intellij.codeInspection.*;
 import com.intellij.psi.*;
-import org.checkerframework.checker.regex.qual.Regex;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -29,7 +28,7 @@ public class RegexUselessPlacementInspection extends AbstractBaseJavaLocalInspec
         file.accept(new JavaRecursiveElementWalkingVisitor() {
             @Override
             public void visitAnnotation(PsiAnnotation annotation) {
-                if (!Regex.class.getCanonicalName().equals(annotation.getQualifiedName())) {
+                if (!"org.checkerframework.checker.regex.qual.Regex".equals(annotation.getQualifiedName())) {
                     return;
                 }
                 final PsiAnnotationOwner owner = annotation.getOwner();

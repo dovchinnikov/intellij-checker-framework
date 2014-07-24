@@ -7,9 +7,11 @@ import org.jetbrains.annotations.NotNull;
 import java.io.File;
 import java.io.IOException;
 import java.lang.reflect.Modifier;
-import java.util.ArrayList;
+import java.net.URL;
+import java.net.URLClassLoader;
 import java.util.Collections;
-import java.util.List;
+import java.util.HashSet;
+import java.util.Set;
 import java.util.jar.JarEntry;
 import java.util.jar.JarFile;
 
@@ -20,27 +22,26 @@ public class ClassScanner {
     /**
      * Gets jar file of given {@code superclass}, and scans it for children of {@code superclass}.
      *
-     * @param superclass parent class.
-     * @param <T>        type of parent class.
-     * @return empty list if class is loaded not from jar or jar cannot be opened,
+     * @param jarFile            jar file to scan.
+     * @param superclassFQN      parent class fully qualified name.
+     * @param packageRestriction package where classes should belong to.
+     * @return empty list if jar cannot be opened or superclass not found,
      * otherwise list of non-abstract {@link java.lang.Class} objects
      * which are children of given {@code superclass}.
      */
-    public static
     @NotNull
-    <T> List<Class<? extends T>> findChildren(final @NotNull Class<T> superclass, @NotNull final String packageRestriction) {
-        final List<Class<? extends T>> result = new ArrayList<Class<? extends T>>();
-        final String superclassURL = superclass.getResource("").toString();
+    public static Set<Class> findChildren(final @NotNull File jarFile,
+                                          final @NotNull String superclassFQN,
+                                          final @NotNull String packageRestriction,
+                                          final @NotNull ClassLoader parent) {
+        final Set<Class> result = new HashSet<Class>();
 
-        int index = superclassURL.indexOf('!');
-        if (index == -1) {
-            return result;
-        }
-
-        final String jarURL = superclassURL.substring(0, index).replace("jar:file:", "");
         JarFile jar = null;
         try {
-            jar = new JarFile(jarURL);
+            //noinspection IOResourceOpenedButNotSafelyClosed
+            jar = new JarFile(jarFile);
+            final URLClassLoader jarClassLoader = new URLClassLoader(new URL[]{jarFile.toURI().toURL()}, parent);
+            final Class superclazz = jarClassLoader.loadClass(superclassFQN);
 
             for (final JarEntry entry : Collections.list(jar.entries())) {
                 if (!entry.isDirectory() && entry.toString().endsWith(".class")) {
@@ -57,7 +58,7 @@ public class ClassScanner {
                             continue;
                         }
 
-                        final Class<? extends T> clazz = Class.forName(clazzName).asSubclass(superclass);
+                        final Class clazz = jarClassLoader.loadClass(clazzName).asSubclass(superclazz);
 
                         if (!Modifier.isAbstract(clazz.getModifiers()) && !clazz.isAnonymousClass()) {
                             result.add(clazz);
@@ -70,7 +71,9 @@ public class ClassScanner {
                 }
             }
         } catch (IOException e) {
-            LOG.error(e);
+            LOG.debug(e);
+        } catch (ClassNotFoundException e) {
+            LOG.debug(e);
         } finally {
             try {
                 if (jar != null) {

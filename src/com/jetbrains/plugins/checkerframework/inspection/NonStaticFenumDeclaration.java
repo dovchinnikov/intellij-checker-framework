@@ -3,7 +3,6 @@ package com.jetbrains.plugins.checkerframework.inspection;
 import com.intellij.codeInsight.AnnotationUtil;
 import com.intellij.codeInspection.*;
 import com.intellij.psi.*;
-import org.checkerframework.checker.fenum.qual.Fenum;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -26,7 +25,7 @@ public class NonStaticFenumDeclaration extends LocalInspectionTool {
         javaFile.accept(new JavaRecursiveElementWalkingVisitor() {
             @Override
             public void visitField(PsiField field) {
-                final PsiAnnotation annotation = AnnotationUtil.findAnnotation(field, Fenum.class.getCanonicalName());
+                final PsiAnnotation annotation = AnnotationUtil.findAnnotation(field, "");
                 if (annotation == null) {
                     return;
                 }

@@ -16,13 +16,16 @@ import com.intellij.openapi.vfs.VfsUtilCore;
 import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.platform.templates.github.ZipUtil;
 import com.intellij.ui.HyperlinkLabel;
+import com.intellij.ui.components.JBLabel;
 import com.intellij.ui.table.JBTable;
 import com.intellij.util.containers.ContainerUtil;
 import com.intellij.util.download.DownloadableFileService;
+import com.intellij.util.ui.UIUtil;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import javax.swing.*;
+import javax.swing.event.DocumentListener;
 import javax.swing.event.HyperlinkEvent;
 import javax.swing.event.HyperlinkListener;
 import javax.swing.table.TableModel;
@@ -46,8 +49,10 @@ public abstract class CheckerFrameworkConfigurableUI {
     private JButton myDisableAllCheckersButton;
     private TextFieldWithBrowseButton myPathToCheckerJarField;
     private HyperlinkLabel myDownloadCheckerLink;
+    private JBLabel myErrorLabel;
 
     public CheckerFrameworkConfigurableUI() {
+        myAvailableCheckersTable.getRowSorter().toggleSortOrder(1);
         myEnableAllCheckersButton.addActionListener(new AbstractAction() {
             @Override
             public void actionPerformed(ActionEvent e) {
@@ -77,6 +82,7 @@ public abstract class CheckerFrameworkConfigurableUI {
         );
         myDownloadCheckerLink.setHyperlinkText("Click here to download Checker Framework");
         myDownloadCheckerLink.addHyperlinkListener(new DownloadCheckerFrameworkLinkListener());
+        myErrorLabel.setIcon(UIUtil.getBalloonWarningIcon());
     }
 
     public JComponent getRoot() {
@@ -91,7 +97,18 @@ public abstract class CheckerFrameworkConfigurableUI {
         myPathToCheckerJarField.setText(pathToCheckerJar);
     }
 
+    public void showWarning(String text) {
+        myErrorLabel.setText(text);
+        myErrorLabel.setVisible(true);
+    }
+
+    public void hideWarning() {
+        myErrorLabel.setVisible(false);
+    }
+
     protected abstract TableModel getCheckersModel();
+
+    protected abstract DocumentListener getPathToJarChangeListener();
 
     private void createUIComponents() {
         myAvailableCheckersTable = new JBTable(getCheckersModel());
@@ -99,6 +116,9 @@ public abstract class CheckerFrameworkConfigurableUI {
         myAvailableCheckersTable.getColumnModel().getColumn(0).setPreferredWidth(120);
         myAvailableCheckersTable.getTableHeader().setResizingAllowed(false);
         myAvailableCheckersTable.getTableHeader().setReorderingAllowed(false);
+
+        myPathToCheckerJarField = new TextFieldWithBrowseButton();
+        myPathToCheckerJarField.getTextField().getDocument().addDocumentListener(getPathToJarChangeListener());
     }
 
     private class DownloadCheckerFrameworkLinkListener implements HyperlinkListener {
@@ -155,7 +175,7 @@ public abstract class CheckerFrameworkConfigurableUI {
 
             final File checkerJar = ContainerUtil.getFirstItem(
                 FileUtil.findFilesByMask(
-                    Pattern.compile(".*/checker\\.jar$"),
+                    Pattern.compile(".*checker\\.jar$"),
                     directoryToUnpackTo
                 )
             );

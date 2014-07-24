@@ -3,26 +3,28 @@ package com.jetbrains.plugins.checkerframework.configurable;
 import com.intellij.openapi.options.Configurable;
 import com.intellij.openapi.options.ConfigurationException;
 import com.intellij.openapi.project.Project;
-import org.checkerframework.javacutil.AbstractTypeProcessor;
+import com.intellij.ui.DocumentAdapter;
 import org.jetbrains.annotations.Nls;
 import org.jetbrains.annotations.Nullable;
 
 import javax.swing.*;
+import javax.swing.event.DocumentEvent;
+import javax.swing.event.DocumentListener;
 import javax.swing.table.AbstractTableModel;
 import javax.swing.table.TableModel;
-import java.util.HashSet;
-import java.util.Set;
+import java.io.File;
 
 public class CheckerFrameworkConfigurable implements Configurable {
 
-    private final Set<String> myToBeEnabledProcessors = new HashSet<String>();
-    private final Set<String> myToBeDisabledProcessors = new HashSet<String>();
-
+    private final CheckerFrameworkSettings myOriginalSettings;
+    private final CheckerFrameworkSettings mySettings;
     private CheckerFrameworkConfigurableUI myUI;
-    private CheckerFrameworkSettings mySettings;
+    private CheckersTableModel myCheckersTableModel;
 
     public CheckerFrameworkConfigurable(final Project project) {
-        mySettings = CheckerFrameworkSettings.getInstance(project);
+        myOriginalSettings = CheckerFrameworkSettings.getInstance(project);
+        mySettings = new CheckerFrameworkSettings(myOriginalSettings);
+        myCheckersTableModel = new CheckersTableModel();
     }
 
     @Nls
@@ -45,25 +47,18 @@ public class CheckerFrameworkConfigurable implements Configurable {
 
     @Override
     public boolean isModified() {
-        return !(
-            myToBeEnabledProcessors.isEmpty()
-            && myToBeDisabledProcessors.isEmpty()
-            && mySettings.getPathToCheckerJar().equals(getUI().getPathToCheckerJar())
-        );
+        return !(myOriginalSettings.equals(mySettings));
     }
 
     @Override
     public void apply() throws ConfigurationException {
-        mySettings.getEnabledCheckers().addAll(myToBeEnabledProcessors);
-        mySettings.getEnabledCheckers().removeAll(myToBeDisabledProcessors);
-        mySettings.setPathToCheckerJar(getUI().getPathToCheckerJar());
-        reset();
+        mySettings.getEnabledCheckers().retainAll(mySettings.getAvailableCheckers());
+        myOriginalSettings.loadState(mySettings.getState());
     }
 
     @Override
     public void reset() {
-        myToBeEnabledProcessors.clear();
-        myToBeDisabledProcessors.clear();
+        mySettings.loadState(myOriginalSettings.getState());
         getUI().setPathToCheckerJar(mySettings.getPathToCheckerJar());
     }
 
@@ -74,15 +69,42 @@ public class CheckerFrameworkConfigurable implements Configurable {
 
     private CheckerFrameworkConfigurableUI getUI() {
         if (myUI == null) {
-            final TableModel myCheckersModel = new CheckersTableModel();
+            final PathToJarChangeListener pathToJarChangeListener = new PathToJarChangeListener();
             myUI = new CheckerFrameworkConfigurableUI() {
                 @Override
                 protected TableModel getCheckersModel() {
-                    return myCheckersModel;
+                    return myCheckersTableModel;
+                }
+
+                @Override
+                protected DocumentListener getPathToJarChangeListener() {
+                    return pathToJarChangeListener;
                 }
             };
         }
         return myUI;
+    }
+
+    private class PathToJarChangeListener extends DocumentAdapter {
+
+        @Override
+        protected void textChanged(DocumentEvent e) {
+            // clean warning state
+            final CheckerFrameworkConfigurableUI ui = getUI();
+            ui.hideWarning();
+
+            // check if jar exists
+            final String pathToCheckerJar = getUI().getPathToCheckerJar();
+            final File checkerJar = new File(pathToCheckerJar);
+            if (!checkerJar.exists()) {
+                ui.showWarning("'" + pathToCheckerJar + "' doesn't exist");
+            } else if (checkerJar.isDirectory()) {
+                ui.showWarning("'" + pathToCheckerJar + "' is a directory");
+            }
+
+            mySettings.setPathToCheckerJar(pathToCheckerJar);
+            myCheckersTableModel.fireTableDataChanged();
+        }
     }
 
     private class CheckersTableModel extends AbstractTableModel {
@@ -101,17 +123,13 @@ public class CheckerFrameworkConfigurable implements Configurable {
 
         @Override
         public int getRowCount() {
-            return CheckerFrameworkSettings.getAvailableCheckers().size();
+            return mySettings.getAvailableCheckerClasses().size();
         }
 
         @Override
         public Object getValueAt(int row, int col) {
-            final Class clazz = CheckerFrameworkSettings.getAvailableCheckers().get(row);
-            final String canonicalName = clazz.getCanonicalName();
-            return col == 0
-                   ? (mySettings.getEnabledCheckers().contains(canonicalName) || myToBeEnabledProcessors.contains(canonicalName))
-                     && !myToBeDisabledProcessors.contains(canonicalName)
-                   : clazz;
+            final Class clazz = mySettings.getAvailableCheckerClasses().get(row);
+            return col == 0 ? mySettings.getEnabledCheckers().contains(clazz.getCanonicalName()) : clazz;
         }
 
         @Override
@@ -131,18 +149,12 @@ public class CheckerFrameworkConfigurable implements Configurable {
 
         @Override
         public void setValueAt(Object value, int row, int col) {
-            if (value.equals(getValueAt(row, col))) {
-                return;
+            final Class clazz = mySettings.getAvailableCheckerClasses().get(row);
+            if (Boolean.TRUE.equals(value)) {
+                mySettings.getEnabledCheckers().add(clazz.getCanonicalName());
+            } else {
+                mySettings.getEnabledCheckers().remove(clazz.getCanonicalName());
             }
-
-            final Class<? extends AbstractTypeProcessor> clazz = CheckerFrameworkSettings.getAvailableCheckers().get(row);
-            final Set<String> setToAddTo = Boolean.TRUE.equals(value) ? myToBeEnabledProcessors : myToBeDisabledProcessors;
-            final Set<String> setToRemoveFrom = Boolean.TRUE.equals(value) ? myToBeDisabledProcessors : myToBeEnabledProcessors;
-
-            if (!setToRemoveFrom.remove(clazz.getCanonicalName())) {
-                setToAddTo.add(clazz.getCanonicalName());
-            }
-
             fireTableCellUpdated(row, col);
         }
     }
