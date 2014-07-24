@@ -3,13 +3,9 @@ package com.jetbrains.plugins.checkerframework.configurable;
 import com.intellij.openapi.components.*;
 import com.intellij.openapi.project.Project;
 import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
 
 import java.io.File;
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 
 @State(
     name = "CheckerFrameworkPluginSettings",
@@ -25,16 +21,12 @@ public class CheckerFrameworkSettings implements PersistentStateComponent<Checke
     public static final String CHECKERS_BASE_CLASS = "org.checkerframework.framework.source.SourceChecker";
     public static final String CHECKERS_PACKAGE = "org.checkerframework.checker";
 
-    private @NotNull String myPathToCheckerJar;
-    private @NotNull Set<String> myEnabledCheckers;
-    private Set<String> myAvailableCheckers;
-    private List<Class> myAvailableCheckerClasses;
-    private boolean needReload;
+    private @NotNull State myState = new State();
+    private List<Class> myAvailableCheckerClasses = null;
+    private boolean needReload = true;
 
     @SuppressWarnings("UnusedDeclaration")
     public CheckerFrameworkSettings() {
-        myPathToCheckerJar = "";
-        myEnabledCheckers = new HashSet<String>();
     }
 
     public CheckerFrameworkSettings(@NotNull CheckerFrameworkSettings original) {
@@ -43,18 +35,17 @@ public class CheckerFrameworkSettings implements PersistentStateComponent<Checke
 
     @NotNull
     public String getPathToCheckerJar() {
-        return myPathToCheckerJar;
+        return myState.myPathToCheckerJar;
     }
 
     public void setPathToCheckerJar(@NotNull String pathToCheckerJar) {
-        needReload = !myPathToCheckerJar.equals(pathToCheckerJar);
-        myPathToCheckerJar = pathToCheckerJar;
+        needReload = !myState.myPathToCheckerJar.equals(pathToCheckerJar);
+        myState.myPathToCheckerJar = pathToCheckerJar;
     }
-
 
     @NotNull
     public Set<String> getEnabledCheckers() {
-        return myEnabledCheckers;
+        return myState.myEnabledCheckers;
     }
 
     @NotNull
@@ -62,7 +53,7 @@ public class CheckerFrameworkSettings implements PersistentStateComponent<Checke
         if (needReload) {
             getAvailableCheckerClasses();
         }
-        return myAvailableCheckers;
+        return myState.myAvailableCheckers;
     }
 
     @NotNull
@@ -70,31 +61,32 @@ public class CheckerFrameworkSettings implements PersistentStateComponent<Checke
         if (myAvailableCheckerClasses == null || needReload) {
             myAvailableCheckerClasses = new ArrayList<Class>(
                 ClassScanner.findChildren(
-                    new File(myPathToCheckerJar),
+                    new File(myState.myPathToCheckerJar),
                     CHECKERS_BASE_CLASS, CHECKERS_PACKAGE,
                     this.getClass().getClassLoader()
                 )
             );
+            myState.myAvailableCheckers.clear();
             for (Class clazz : myAvailableCheckerClasses) {
-                myAvailableCheckers.add(clazz.getCanonicalName());
+                myState.myAvailableCheckers.add(clazz.getCanonicalName());
             }
             needReload = false;
         }
         return myAvailableCheckerClasses;
     }
 
-    @Nullable
+    @NotNull
     @Override
     public State getState() {
-        return new State(getPathToCheckerJar(), getAvailableCheckers(), getEnabledCheckers());
+        return myState;
     }
 
     @Override
-    public void loadState(State state) {
-        needReload = !state.myPathToCheckerJar.equals(myPathToCheckerJar);
-        myPathToCheckerJar = state.myPathToCheckerJar;
-        myAvailableCheckers = new HashSet<String>(state.myAvailableCheckers);
-        myEnabledCheckers = new HashSet<String>(state.myEnabledCheckers);
+    public void loadState(final State state) {
+        if (!needReload) {
+            needReload = !state.myPathToCheckerJar.equals(state.myPathToCheckerJar);
+        }
+        myState = new State(state);
     }
 
     @Override
@@ -106,77 +98,67 @@ public class CheckerFrameworkSettings implements PersistentStateComponent<Checke
             return false;
         }
         CheckerFrameworkSettings settings = (CheckerFrameworkSettings)o;
-        if (!myPathToCheckerJar.equals(settings.myPathToCheckerJar)) {
-            return false;
-        }
-        if (!myAvailableCheckers.containsAll(settings.myAvailableCheckers)
-            || !settings.myAvailableCheckers.containsAll(myAvailableCheckers)) {
-            return false;
-        }
-        if (!myEnabledCheckers.containsAll(settings.myEnabledCheckers)
-            || !settings.myEnabledCheckers.containsAll(myEnabledCheckers)) {
-            return false;
-        }
-        return true;
+        return myState.equals(settings.myState);
     }
 
     @Override
     public int hashCode() {
-        int result = myPathToCheckerJar.hashCode();
-        result = 31 * result + (myAvailableCheckers.hashCode());
-        result = 31 * result + (myEnabledCheckers.hashCode());
-        return result;
+        return myState.hashCode();
     }
 
-    public static CheckerFrameworkSettings getInstance(Project project) {
+    public static CheckerFrameworkSettings getInstance(final Project project) {
         return ServiceManager.getService(project, CheckerFrameworkSettings.class);
     }
 
-    @SuppressWarnings("UnusedDeclaration")
     public static class State {
-        private @NotNull String myPathToCheckerJar;
-        private @NotNull Set<String> myAvailableCheckers;
-        private @NotNull Set<String> myEnabledCheckers;
+        public @NotNull String myPathToCheckerJar;
+        public @NotNull Set<String> myAvailableCheckers;
+        public @NotNull Set<String> myEnabledCheckers;
 
+        @SuppressWarnings("UnusedDeclaration")
         public State() {
             myPathToCheckerJar = "";
             myAvailableCheckers = new HashSet<String>();
             myEnabledCheckers = new HashSet<String>();
         }
 
-        public State(@NotNull String pathToCheckerJar,
-                     @NotNull Set<String> availableCheckers,
-                     @NotNull Set<String> enabledCheckers) {
-            myPathToCheckerJar = pathToCheckerJar;
-            myAvailableCheckers = availableCheckers;
-            myEnabledCheckers = enabledCheckers;
+        public State(@NotNull State state) {
+            myPathToCheckerJar = state.myPathToCheckerJar;
+            myAvailableCheckers = new HashSet<String>(state.myAvailableCheckers);
+            myEnabledCheckers = new HashSet<String>(state.myEnabledCheckers);
         }
 
-        @NotNull
-        public String getPathToCheckerJar() {
-            return myPathToCheckerJar;
+        @Override
+        public boolean equals(Object o) {
+            if (this == o) {
+                return true;
+            }
+            if (o == null || getClass() != o.getClass()) {
+                return false;
+            }
+            State state = (State)o;
+            if (!myPathToCheckerJar.equals(state.myPathToCheckerJar)) {
+                return false;
+            }
+            if (!collectionEquals(myEnabledCheckers, state.myEnabledCheckers)) {
+                return false;
+            }
+            if (!collectionEquals(myAvailableCheckers, state.myAvailableCheckers)) {
+                return false;
+            }
+            return true;
         }
 
-        public void setPathToCheckerJar(@NotNull String pathToCheckerJar) {
-            myPathToCheckerJar = pathToCheckerJar;
+        @Override
+        public int hashCode() {
+            int result = myPathToCheckerJar.hashCode();
+            result = 31 * result + myAvailableCheckers.hashCode();
+            result = 31 * result + myEnabledCheckers.hashCode();
+            return result;
         }
 
-        @NotNull
-        public Set<String> getAvailableCheckers() {
-            return myAvailableCheckers;
-        }
-
-        public void setAvailableCheckers(@NotNull Set<String> availableCheckers) {
-            myAvailableCheckers = availableCheckers;
-        }
-
-        @NotNull
-        public Set<String> getEnabledCheckers() {
-            return myEnabledCheckers;
-        }
-
-        public void setEnabledCheckers(@NotNull Set<String> enabledCheckers) {
-            myEnabledCheckers = enabledCheckers;
+        private static <T> boolean collectionEquals(@NotNull Collection<T> a, @NotNull Collection<T> b) {
+            return a.containsAll(b) && b.containsAll(a);
         }
     }
 }
