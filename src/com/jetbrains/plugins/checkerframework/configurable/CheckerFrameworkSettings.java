@@ -91,6 +91,7 @@ public class CheckerFrameworkSettings implements PersistentStateComponent<Checke
         return myEnabledCheckers;
     }
 
+    @SuppressWarnings("unused")
     public void setEnabledCheckers(@NotNull Set<String> enabledCheckers) {
         myEnabledCheckers = enabledCheckers;
     }
