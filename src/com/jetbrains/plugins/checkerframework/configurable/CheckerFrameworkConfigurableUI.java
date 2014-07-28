@@ -1,5 +1,7 @@
 package com.jetbrains.plugins.checkerframework.configurable;
 
+import com.intellij.icons.AllIcons;
+import com.intellij.openapi.actionSystem.AnActionEvent;
 import com.intellij.openapi.fileChooser.FileChooserDescriptor;
 import com.intellij.openapi.ui.ComponentWithBrowseButton;
 import com.intellij.openapi.ui.TextComponentAccessor;
@@ -8,45 +10,28 @@ import com.intellij.ui.*;
 import com.intellij.ui.components.JBLabel;
 import com.intellij.ui.table.JBTable;
 import com.intellij.util.ui.EditableModel;
-import com.intellij.util.ui.UIUtil;
 
 import javax.swing.*;
 import javax.swing.event.DocumentListener;
 import javax.swing.table.TableCellEditor;
 import javax.swing.table.TableModel;
-import java.awt.event.ActionEvent;
 
 public abstract class CheckerFrameworkConfigurableUI {
 
     private static final FileChooserDescriptor JAR_DESCRIPTOR = new FileChooserDescriptor(false, false, true, true, false, false);
 
     private JPanel myRootPane;
+    @SuppressWarnings("UnusedDeclaration")
+    private JPanel myAvailableCheckersPanel;
     private JBTable myAvailableCheckersTable;
-    private JButton myEnableAllCheckersButton;
-    private JButton myDisableAllCheckersButton;
     private TextFieldWithBrowseButton myPathToCheckerJarField;
     private HyperlinkLabel myDownloadCheckerLink;
     private JBLabel myErrorLabel;
-    @SuppressWarnings("UnusedDeclaration") private JPanel myOptionsPanel;
+    @SuppressWarnings("UnusedDeclaration")
+    private JPanel myOptionsPanel;
+    private JBTable myOptionsTable;
 
     public CheckerFrameworkConfigurableUI() {
-        myAvailableCheckersTable.getRowSorter().toggleSortOrder(1);
-        myEnableAllCheckersButton.addActionListener(new AbstractAction() {
-            @Override
-            public void actionPerformed(ActionEvent e) {
-                for (int i = 0; i < myAvailableCheckersTable.getRowCount(); i++) {
-                    myAvailableCheckersTable.setValueAt(true, i, 0);
-                }
-            }
-        });
-        myDisableAllCheckersButton.addActionListener(new AbstractAction() {
-            @Override
-            public void actionPerformed(ActionEvent e) {
-                for (int i = 0; i < myAvailableCheckersTable.getRowCount(); i++) {
-                    myAvailableCheckersTable.setValueAt(false, i, 0);
-                }
-            }
-        });
         myPathToCheckerJarField.addBrowseFolderListener(
             null,
             new ComponentWithBrowseButton.BrowseFolderActionListener<JTextField>(
@@ -60,7 +45,7 @@ public abstract class CheckerFrameworkConfigurableUI {
         );
         myDownloadCheckerLink.setHyperlinkText("Click here to download Checker Framework");
         myDownloadCheckerLink.addHyperlinkListener(new DownloadCheckerFrameworkLinkListener(myRootPane, myPathToCheckerJarField));
-        myErrorLabel.setIcon(UIUtil.getBalloonWarningIcon());
+        myErrorLabel.setIcon(AllIcons.General.BalloonWarning);
     }
 
     public JComponent getRoot() {
@@ -91,19 +76,37 @@ public abstract class CheckerFrameworkConfigurableUI {
     protected abstract TableModel getOptionsModel();
 
     private void createUIComponents() {
-        myAvailableCheckersTable = new JBTable(getCheckersModel());
-        myAvailableCheckersTable.getColumnModel().getColumn(0).setMaxWidth(120);
-        myAvailableCheckersTable.getColumnModel().getColumn(0).setPreferredWidth(120);
-        myAvailableCheckersTable.getTableHeader().setResizingAllowed(false);
-        myAvailableCheckersTable.getTableHeader().setReorderingAllowed(false);
-
         myPathToCheckerJarField = new TextFieldWithBrowseButton();
         myPathToCheckerJarField.getTextField().getDocument().addDocumentListener(getPathToJarChangeListener());
 
-        final JBTable myOptionsTable = new JBTable(getOptionsModel());
+        myAvailableCheckersTable = new JBTable(getCheckersModel());
+        myAvailableCheckersTable.setAutoCreateRowSorter(true);
+        myAvailableCheckersTable.setAutoCreateColumnsFromModel(true);
+        myAvailableCheckersTable.setStriped(true);
+        myAvailableCheckersTable.setRowSelectionAllowed(false);
+        myAvailableCheckersTable.getColumnModel().getColumn(0).setMaxWidth(120);
+        myAvailableCheckersTable.getTableHeader().setReorderingAllowed(false);
+        myAvailableCheckersTable.getRowSorter().toggleSortOrder(1);
+
+        myAvailableCheckersPanel = ToolbarDecorator.createDecorator(myAvailableCheckersTable)
+            .addExtraAction(new AnActionButton("Select all", AllIcons.Actions.Selectall) {
+                @Override
+                public void actionPerformed(AnActionEvent e) {
+                    for (int i = 0; i < myAvailableCheckersTable.getRowCount(); i++) {
+                        myAvailableCheckersTable.setValueAt(true, i, 0);
+                    }
+                }
+            }).addExtraAction(new AnActionButton("Unselect all", AllIcons.Actions.Unselectall) {
+                @Override
+                public void actionPerformed(AnActionEvent e) {
+                    for (int i = 0; i < myAvailableCheckersTable.getRowCount(); i++) {
+                        myAvailableCheckersTable.setValueAt(false, i, 0);
+                    }
+                }
+            }).createPanel();
+
+        myOptionsTable = new JBTable(getOptionsModel());
         myOptionsPanel = ToolbarDecorator.createDecorator(myOptionsTable)
-            .disableUpAction()
-            .disableDownAction()
             .setAddAction(new AnActionButtonRunnable() {
                 @Override
                 public void run(AnActionButton anActionButton) {
@@ -115,7 +118,6 @@ public abstract class CheckerFrameworkConfigurableUI {
                     ((EditableModel)model).addRow();
                     TableUtil.editCellAt(myOptionsTable, model.getRowCount() - 1, 0);
                 }
-            })
-            .createPanel();
+            }).createPanel();
     }
 }

@@ -112,7 +112,7 @@ public class CheckerFrameworkConfigurable implements Configurable {
 
     private class CheckersTableModel extends AbstractTableModel {
 
-        private final String[] myColumnNames = {"Enabled/Disabled", "Checker class"};
+        private final String[] myColumnNames = {"Enabled", "Checker class"};
 
         @Override
         public int getColumnCount() {
