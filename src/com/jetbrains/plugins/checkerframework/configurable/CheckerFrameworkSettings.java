@@ -22,6 +22,7 @@ public class CheckerFrameworkSettings implements PersistentStateComponent<Checke
     public static final String CHECKERS_PACKAGE = "org.checkerframework.checker";
 
     private @NotNull State myState = new State();
+    private List<String> myAllCheckers = null;
     private List<Class> myAvailableCheckerClasses = null;
     private boolean needReload = true;
 
@@ -49,28 +50,26 @@ public class CheckerFrameworkSettings implements PersistentStateComponent<Checke
     }
 
     @NotNull
+    public List<String> getAllCheckers() {
+        if (needReload) {
+            loadClasses();
+        }
+        return myAllCheckers;
+    }
+
+    @NotNull
     public Set<String> getAvailableCheckers() {
         if (needReload) {
-            getAvailableCheckerClasses();
+            loadClasses();
         }
         return myState.myAvailableCheckers;
     }
 
+    @SuppressWarnings("UnusedDeclaration")
     @NotNull
     public List<Class> getAvailableCheckerClasses() {
-        if (myAvailableCheckerClasses == null || needReload) {
-            myAvailableCheckerClasses = new ArrayList<Class>(
-                ClassScanner.findChildren(
-                    new File(myState.myPathToCheckerJar),
-                    CHECKERS_BASE_CLASS, CHECKERS_PACKAGE,
-                    this.getClass().getClassLoader()
-                )
-            );
-            myState.myAvailableCheckers.clear();
-            for (Class clazz : myAvailableCheckerClasses) {
-                myState.myAvailableCheckers.add(clazz.getCanonicalName());
-            }
-            needReload = false;
+        if (needReload) {
+            loadClasses();
         }
         return myAvailableCheckerClasses;
     }
@@ -111,6 +110,24 @@ public class CheckerFrameworkSettings implements PersistentStateComponent<Checke
         return myState.hashCode();
     }
 
+    private void loadClasses() {
+        myAvailableCheckerClasses = new ArrayList<Class>(
+            ClassScanner.findChildren(
+                new File(myState.myPathToCheckerJar),
+                CHECKERS_BASE_CLASS, CHECKERS_PACKAGE,
+                this.getClass().getClassLoader()
+            )
+        );
+        myState.myAvailableCheckers.clear();
+        for (final Class clazz : myAvailableCheckerClasses) {
+            myState.myAvailableCheckers.add(clazz.getCanonicalName());
+        }
+        myAllCheckers = new ArrayList<String>();
+        myAllCheckers.addAll(myState.myAvailableCheckers);
+        myAllCheckers.addAll(myState.myCustomCheckers);
+        needReload = false;
+    }
+
     public static CheckerFrameworkSettings getInstance(final Project project) {
         return ServiceManager.getService(project, CheckerFrameworkSettings.class);
     }
@@ -118,13 +135,14 @@ public class CheckerFrameworkSettings implements PersistentStateComponent<Checke
     public static class State {
         public @NotNull String myPathToCheckerJar;
         public @NotNull Set<String> myAvailableCheckers;
+        public @NotNull Set<String> myCustomCheckers;
         public @NotNull Set<String> myEnabledCheckers;
         public @NotNull List<String> myOptions;
 
-        @SuppressWarnings("UnusedDeclaration")
         public State() {
             myPathToCheckerJar = "";
             myAvailableCheckers = new HashSet<String>();
+            myCustomCheckers = new HashSet<String>();
             myEnabledCheckers = new HashSet<String>();
             myOptions = new ArrayList<String>();
         }
@@ -132,6 +150,7 @@ public class CheckerFrameworkSettings implements PersistentStateComponent<Checke
         public State(@NotNull State state) {
             myPathToCheckerJar = state.myPathToCheckerJar;
             myAvailableCheckers = new HashSet<String>(state.myAvailableCheckers);
+            myCustomCheckers = new HashSet<String>(state.myCustomCheckers);
             myEnabledCheckers = new HashSet<String>(state.myEnabledCheckers);
             myOptions = new ArrayList<String>(state.myOptions);
         }
@@ -149,6 +168,9 @@ public class CheckerFrameworkSettings implements PersistentStateComponent<Checke
                 return false;
             }
             if (!collectionEquals(myEnabledCheckers, state.myEnabledCheckers)) {
+                return false;
+            }
+            if (!collectionEquals(myCustomCheckers, state.myCustomCheckers)) {
                 return false;
             }
             if (!collectionEquals(myAvailableCheckers, state.myAvailableCheckers)) {

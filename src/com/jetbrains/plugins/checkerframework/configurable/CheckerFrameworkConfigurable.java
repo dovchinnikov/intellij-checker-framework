@@ -113,6 +113,7 @@ public class CheckerFrameworkConfigurable implements Configurable {
     private class CheckersTableModel extends AbstractTableModel {
 
         private final String[] myColumnNames = {"Enabled", "Checker class"};
+        private final Class[] myColumnClasses = {Boolean.class, String.class};
 
         @Override
         public int getColumnCount() {
@@ -120,29 +121,18 @@ public class CheckerFrameworkConfigurable implements Configurable {
         }
 
         @Override
-        public String getColumnName(int col) {
-            return myColumnNames[col];
+        public String getColumnName(int column) {
+            return myColumnNames[column];
+        }
+
+        @Override
+        public Class getColumnClass(int column) {
+            return myColumnClasses[column];
         }
 
         @Override
         public int getRowCount() {
-            return mySettings.getAvailableCheckerClasses().size();
-        }
-
-        @Override
-        public Object getValueAt(int row, int col) {
-            final Class clazz = mySettings.getAvailableCheckerClasses().get(row);
-            return col == 0 ? mySettings.getEnabledCheckers().contains(clazz.getCanonicalName()) : clazz;
-        }
-
-        @Override
-        public Class getColumnClass(int c) {
-            switch (c) {
-                case 0:
-                    return Boolean.class;
-                default:
-                    return Class.class;
-            }
+            return mySettings.getAllCheckers().size();
         }
 
         @Override
@@ -151,12 +141,18 @@ public class CheckerFrameworkConfigurable implements Configurable {
         }
 
         @Override
+        public Object getValueAt(int row, int col) {
+            final String clazzName = mySettings.getAllCheckers().get(row);
+            return col == 0 ? mySettings.getEnabledCheckers().contains(clazzName) : clazzName;
+        }
+
+        @Override
         public void setValueAt(Object value, int row, int col) {
-            final Class clazz = mySettings.getAvailableCheckerClasses().get(row);
+            final String clazzName = mySettings.getAllCheckers().get(row);
             if (Boolean.TRUE.equals(value)) {
-                mySettings.getEnabledCheckers().add(clazz.getCanonicalName());
+                mySettings.getEnabledCheckers().add(clazzName);
             } else {
-                mySettings.getEnabledCheckers().remove(clazz.getCanonicalName());
+                mySettings.getEnabledCheckers().remove(clazzName);
             }
             fireTableCellUpdated(row, col);
         }
