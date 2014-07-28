@@ -10,7 +10,6 @@ import org.jetbrains.annotations.Nullable;
 import javax.swing.*;
 import javax.swing.event.DocumentEvent;
 import javax.swing.event.DocumentListener;
-import javax.swing.table.AbstractTableModel;
 import javax.swing.table.TableModel;
 import java.io.File;
 
@@ -27,7 +26,7 @@ public class CheckerFrameworkConfigurable implements Configurable {
         myOriginalSettings = CheckerFrameworkSettings.getInstance(project);
         mySettings = new CheckerFrameworkSettings(myOriginalSettings);
         pathToJarChangeListener = new PathToJarChangeListener();
-        myCheckersTableModel = new CheckersTableModel();
+        myCheckersTableModel = new CheckersTableModel(mySettings);
         myOptionsTableModel = new OptionsTableModel(mySettings.getOptions());
         myUI = new CheckerFrameworkConfigurableUI() {
             @Override
@@ -107,54 +106,6 @@ public class CheckerFrameworkConfigurable implements Configurable {
 
             mySettings.setPathToCheckerJar(pathToCheckerJar);
             myCheckersTableModel.fireTableDataChanged();
-        }
-    }
-
-    private class CheckersTableModel extends AbstractTableModel {
-
-        private final String[] myColumnNames = {"Enabled", "Checker class"};
-        private final Class[] myColumnClasses = {Boolean.class, String.class};
-
-        @Override
-        public int getColumnCount() {
-            return myColumnNames.length;
-        }
-
-        @Override
-        public String getColumnName(int column) {
-            return myColumnNames[column];
-        }
-
-        @Override
-        public Class getColumnClass(int column) {
-            return myColumnClasses[column];
-        }
-
-        @Override
-        public int getRowCount() {
-            return mySettings.getAllCheckers().size();
-        }
-
-        @Override
-        public boolean isCellEditable(int row, int col) {
-            return col == 0;
-        }
-
-        @Override
-        public Object getValueAt(int row, int col) {
-            final String clazzName = mySettings.getAllCheckers().get(row);
-            return col == 0 ? mySettings.getEnabledCheckers().contains(clazzName) : clazzName;
-        }
-
-        @Override
-        public void setValueAt(Object value, int row, int col) {
-            final String clazzName = mySettings.getAllCheckers().get(row);
-            if (Boolean.TRUE.equals(value)) {
-                mySettings.getEnabledCheckers().add(clazzName);
-            } else {
-                mySettings.getEnabledCheckers().remove(clazzName);
-            }
-            fireTableCellUpdated(row, col);
         }
     }
 }

@@ -22,8 +22,8 @@ public class CheckerFrameworkSettings implements PersistentStateComponent<Checke
     public static final String CHECKERS_PACKAGE = "org.checkerframework.checker";
 
     private @NotNull State myState = new State();
-    private List<String> myAllCheckers = null;
-    private List<Class> myAvailableCheckerClasses = null;
+    private final List<String> myAllCheckers = new ArrayList<String>();
+    private final List<Class> myAvailableCheckerClasses = new ArrayList<Class>();
     private boolean needReload = true;
 
     @SuppressWarnings("UnusedDeclaration")
@@ -111,20 +111,24 @@ public class CheckerFrameworkSettings implements PersistentStateComponent<Checke
     }
 
     private void loadClasses() {
-        myAvailableCheckerClasses = new ArrayList<Class>(
+        myAvailableCheckerClasses.clear();
+        myAvailableCheckerClasses.addAll(
             ClassScanner.findChildren(
                 new File(myState.myPathToCheckerJar),
                 CHECKERS_BASE_CLASS, CHECKERS_PACKAGE,
                 this.getClass().getClassLoader()
             )
         );
+
         myState.myAvailableCheckers.clear();
         for (final Class clazz : myAvailableCheckerClasses) {
             myState.myAvailableCheckers.add(clazz.getCanonicalName());
         }
-        myAllCheckers = new ArrayList<String>();
+
+        myAllCheckers.clear();
         myAllCheckers.addAll(myState.myAvailableCheckers);
         myAllCheckers.addAll(myState.myCustomCheckers);
+
         needReload = false;
     }
 
