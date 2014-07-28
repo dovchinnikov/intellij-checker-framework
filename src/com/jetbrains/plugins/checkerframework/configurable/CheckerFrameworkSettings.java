@@ -76,6 +76,11 @@ public class CheckerFrameworkSettings implements PersistentStateComponent<Checke
     }
 
     @NotNull
+    List<String> getOptions() {
+        return myState.myOptions;
+    }
+
+    @NotNull
     @Override
     public State getState() {
         return myState;
@@ -114,18 +119,21 @@ public class CheckerFrameworkSettings implements PersistentStateComponent<Checke
         public @NotNull String myPathToCheckerJar;
         public @NotNull Set<String> myAvailableCheckers;
         public @NotNull Set<String> myEnabledCheckers;
+        public @NotNull List<String> myOptions;
 
         @SuppressWarnings("UnusedDeclaration")
         public State() {
             myPathToCheckerJar = "";
             myAvailableCheckers = new HashSet<String>();
             myEnabledCheckers = new HashSet<String>();
+            myOptions = new ArrayList<String>();
         }
 
         public State(@NotNull State state) {
             myPathToCheckerJar = state.myPathToCheckerJar;
             myAvailableCheckers = new HashSet<String>(state.myAvailableCheckers);
             myEnabledCheckers = new HashSet<String>(state.myEnabledCheckers);
+            myOptions = new ArrayList<String>(state.myOptions);
         }
 
         @Override
@@ -144,6 +152,9 @@ public class CheckerFrameworkSettings implements PersistentStateComponent<Checke
                 return false;
             }
             if (!collectionEquals(myAvailableCheckers, state.myAvailableCheckers)) {
+                return false;
+            }
+            if (!collectionEquals(myOptions, state.myOptions)) {
                 return false;
             }
             return true;

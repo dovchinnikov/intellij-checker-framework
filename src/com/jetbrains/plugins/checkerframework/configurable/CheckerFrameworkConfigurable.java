@@ -18,13 +18,33 @@ public class CheckerFrameworkConfigurable implements Configurable {
 
     private final CheckerFrameworkSettings myOriginalSettings;
     private final CheckerFrameworkSettings mySettings;
-    private CheckerFrameworkConfigurableUI myUI;
-    private CheckersTableModel myCheckersTableModel;
+    private final PathToJarChangeListener pathToJarChangeListener;
+    private final CheckersTableModel myCheckersTableModel;
+    private final OptionsTableModel myOptionsTableModel;
+    private final CheckerFrameworkConfigurableUI myUI;
 
     public CheckerFrameworkConfigurable(final Project project) {
         myOriginalSettings = CheckerFrameworkSettings.getInstance(project);
         mySettings = new CheckerFrameworkSettings(myOriginalSettings);
+        pathToJarChangeListener = new PathToJarChangeListener();
         myCheckersTableModel = new CheckersTableModel();
+        myOptionsTableModel = new OptionsTableModel(mySettings.getOptions());
+        myUI = new CheckerFrameworkConfigurableUI() {
+            @Override
+            protected DocumentListener getPathToJarChangeListener() {
+                return pathToJarChangeListener;
+            }
+
+            @Override
+            protected TableModel getCheckersModel() {
+                return myCheckersTableModel;
+            }
+
+            @Override
+            protected TableModel getOptionsModel() {
+                return myOptionsTableModel;
+            }
+        };
     }
 
     @Nls
@@ -42,7 +62,7 @@ public class CheckerFrameworkConfigurable implements Configurable {
     @Nullable
     @Override
     public JComponent createComponent() {
-        return getUI().getRoot();
+        return myUI.getRoot();
     }
 
     @Override
@@ -59,7 +79,8 @@ public class CheckerFrameworkConfigurable implements Configurable {
     @Override
     public void reset() {
         mySettings.loadState(myOriginalSettings.getState());
-        getUI().setPathToCheckerJar(mySettings.getPathToCheckerJar());
+        myOptionsTableModel.setData(mySettings.getOptions());
+        myUI.setPathToCheckerJar(mySettings.getPathToCheckerJar());
     }
 
     @Override
@@ -67,34 +88,16 @@ public class CheckerFrameworkConfigurable implements Configurable {
         // nothing to do here
     }
 
-    private CheckerFrameworkConfigurableUI getUI() {
-        if (myUI == null) {
-            final PathToJarChangeListener pathToJarChangeListener = new PathToJarChangeListener();
-            myUI = new CheckerFrameworkConfigurableUI() {
-                @Override
-                protected TableModel getCheckersModel() {
-                    return myCheckersTableModel;
-                }
-
-                @Override
-                protected DocumentListener getPathToJarChangeListener() {
-                    return pathToJarChangeListener;
-                }
-            };
-        }
-        return myUI;
-    }
-
     private class PathToJarChangeListener extends DocumentAdapter {
 
         @Override
         protected void textChanged(DocumentEvent e) {
             // clean warning state
-            final CheckerFrameworkConfigurableUI ui = getUI();
+            final CheckerFrameworkConfigurableUI ui = myUI;
             ui.hideWarning();
 
             // check if jar exists
-            final String pathToCheckerJar = getUI().getPathToCheckerJar();
+            final String pathToCheckerJar = myUI.getPathToCheckerJar();
             final File checkerJar = new File(pathToCheckerJar);
             if (!checkerJar.exists()) {
                 ui.showWarning("'" + pathToCheckerJar + "' doesn't exist");

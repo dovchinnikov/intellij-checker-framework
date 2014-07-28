@@ -4,13 +4,15 @@ import com.intellij.openapi.fileChooser.FileChooserDescriptor;
 import com.intellij.openapi.ui.ComponentWithBrowseButton;
 import com.intellij.openapi.ui.TextComponentAccessor;
 import com.intellij.openapi.ui.TextFieldWithBrowseButton;
-import com.intellij.ui.HyperlinkLabel;
+import com.intellij.ui.*;
 import com.intellij.ui.components.JBLabel;
 import com.intellij.ui.table.JBTable;
+import com.intellij.util.ui.EditableModel;
 import com.intellij.util.ui.UIUtil;
 
 import javax.swing.*;
 import javax.swing.event.DocumentListener;
+import javax.swing.table.TableCellEditor;
 import javax.swing.table.TableModel;
 import java.awt.event.ActionEvent;
 
@@ -25,6 +27,7 @@ public abstract class CheckerFrameworkConfigurableUI {
     private TextFieldWithBrowseButton myPathToCheckerJarField;
     private HyperlinkLabel myDownloadCheckerLink;
     private JBLabel myErrorLabel;
+    @SuppressWarnings("UnusedDeclaration") private JPanel myOptionsPanel;
 
     public CheckerFrameworkConfigurableUI() {
         myAvailableCheckersTable.getRowSorter().toggleSortOrder(1);
@@ -81,9 +84,11 @@ public abstract class CheckerFrameworkConfigurableUI {
         myErrorLabel.setVisible(false);
     }
 
+    protected abstract DocumentListener getPathToJarChangeListener();
+
     protected abstract TableModel getCheckersModel();
 
-    protected abstract DocumentListener getPathToJarChangeListener();
+    protected abstract TableModel getOptionsModel();
 
     private void createUIComponents() {
         myAvailableCheckersTable = new JBTable(getCheckersModel());
@@ -94,5 +99,23 @@ public abstract class CheckerFrameworkConfigurableUI {
 
         myPathToCheckerJarField = new TextFieldWithBrowseButton();
         myPathToCheckerJarField.getTextField().getDocument().addDocumentListener(getPathToJarChangeListener());
+
+        final JBTable myOptionsTable = new JBTable(getOptionsModel());
+        myOptionsPanel = ToolbarDecorator.createDecorator(myOptionsTable)
+            .disableUpAction()
+            .disableDownAction()
+            .setAddAction(new AnActionButtonRunnable() {
+                @Override
+                public void run(AnActionButton anActionButton) {
+                    final TableCellEditor cellEditor = myOptionsTable.getCellEditor();
+                    if (cellEditor != null) {
+                        cellEditor.stopCellEditing();
+                    }
+                    final TableModel model = myOptionsTable.getModel();
+                    ((EditableModel)model).addRow();
+                    TableUtil.editCellAt(myOptionsTable, model.getRowCount() - 1, 0);
+                }
+            })
+            .createPanel();
     }
 }
