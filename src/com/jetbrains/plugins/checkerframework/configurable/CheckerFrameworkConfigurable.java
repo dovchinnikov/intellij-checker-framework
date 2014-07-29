@@ -132,16 +132,20 @@ public class CheckerFrameworkConfigurable implements Configurable {
             final TreeClassChooser chooser = TreeClassChooserFactory.getInstance(myProject).createNoInnerClassesScopeChooser(
                 UIBundle.message("class.filter.editor.choose.class.title"),
                 GlobalSearchScope.allScope(myProject),
-                ClassFilter.ALL,
+                new ClassFilter() {
+                    @Override
+                    public boolean isAccepted(PsiClass aClass) {
+                        return aClass.getQualifiedName() != null;
+                    }
+                },
                 null
             );
             chooser.showDialog();
             final PsiClass selectedClass = chooser.getSelected();
             if (selectedClass != null) {
                 final String fqn = selectedClass.getQualifiedName();
-                if (fqn != null) {
-                    mySettings.addCustomChecker(fqn);
-                }
+                assert fqn != null;
+                mySettings.addCustomChecker(fqn);
                 myCheckersTableModel.fireTableDataChanged();
             }
         }
