@@ -75,6 +75,8 @@ public abstract class CheckerFrameworkConfigurableUI {
 
     protected abstract TableModel getOptionsModel();
 
+    protected abstract AnActionButtonRunnable getAddCustomCheckerHandler();
+
     private void createUIComponents() {
         myPathToCheckerJarField = new TextFieldWithBrowseButton();
         myPathToCheckerJarField.getTextField().getDocument().addDocumentListener(getPathToJarChangeListener());
@@ -89,7 +91,9 @@ public abstract class CheckerFrameworkConfigurableUI {
         myAvailableCheckersTable.getRowSorter().toggleSortOrder(1);
 
         myAvailableCheckersPanel = ToolbarDecorator.createDecorator(myAvailableCheckersTable)
-            .addExtraAction(new AnActionButton("Select all", AllIcons.Actions.Selectall) {
+            .setAddAction(
+                getAddCustomCheckerHandler()
+            ).addExtraAction(new AnActionButton("Select all", AllIcons.Actions.Selectall) {
                 @Override
                 public void actionPerformed(AnActionEvent e) {
                     for (int i = 0; i < myAvailableCheckersTable.getRowCount(); i++) {

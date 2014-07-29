@@ -22,8 +22,8 @@ public class CheckerFrameworkSettings implements PersistentStateComponent<Checke
     public static final String CHECKERS_PACKAGE = "org.checkerframework.checker";
 
     private @NotNull State myState = new State();
-    private final List<String> myAllCheckers = new ArrayList<String>();
-    private final List<Class> myAvailableCheckerClasses = new ArrayList<Class>();
+    private final @NotNull List<String> myCheckers = new ArrayList<String>();
+    private final @NotNull List<Class> myCheckerClasses = new ArrayList<Class>();
     private boolean needReload = true;
 
     @SuppressWarnings("UnusedDeclaration")
@@ -50,32 +50,20 @@ public class CheckerFrameworkSettings implements PersistentStateComponent<Checke
     }
 
     @NotNull
-    public List<String> getAllCheckers() {
+    public List<String> getCheckers() {
         if (needReload) {
             loadClasses();
         }
-        return myAllCheckers;
+        return myCheckers;
+    }
+
+    public void addCustomChecker(@NotNull String clazzFQN) {
+        myState.myCustomCheckers.add(clazzFQN);
+        refreshCheckers();
     }
 
     @NotNull
-    public Set<String> getAvailableCheckers() {
-        if (needReload) {
-            loadClasses();
-        }
-        return myState.myAvailableCheckers;
-    }
-
-    @SuppressWarnings("UnusedDeclaration")
-    @NotNull
-    public List<Class> getAvailableCheckerClasses() {
-        if (needReload) {
-            loadClasses();
-        }
-        return myAvailableCheckerClasses;
-    }
-
-    @NotNull
-    List<String> getOptions() {
+    public List<String> getOptions() {
         return myState.myOptions;
     }
 
@@ -111,8 +99,8 @@ public class CheckerFrameworkSettings implements PersistentStateComponent<Checke
     }
 
     private void loadClasses() {
-        myAvailableCheckerClasses.clear();
-        myAvailableCheckerClasses.addAll(
+        myCheckerClasses.clear();
+        myCheckerClasses.addAll(
             ClassScanner.findChildren(
                 new File(myState.myPathToCheckerJar),
                 CHECKERS_BASE_CLASS, CHECKERS_PACKAGE,
@@ -120,16 +108,20 @@ public class CheckerFrameworkSettings implements PersistentStateComponent<Checke
             )
         );
 
-        myState.myAvailableCheckers.clear();
-        for (final Class clazz : myAvailableCheckerClasses) {
-            myState.myAvailableCheckers.add(clazz.getCanonicalName());
+        myState.myBuiltInCheckers.clear();
+        for (final Class clazz : myCheckerClasses) {
+            myState.myBuiltInCheckers.add(clazz.getCanonicalName());
         }
 
-        myAllCheckers.clear();
-        myAllCheckers.addAll(myState.myAvailableCheckers);
-        myAllCheckers.addAll(myState.myCustomCheckers);
+        refreshCheckers();
 
         needReload = false;
+    }
+
+    private void refreshCheckers() {
+        myCheckers.clear();
+        myCheckers.addAll(myState.myBuiltInCheckers);
+        myCheckers.addAll(myState.myCustomCheckers);
     }
 
     public static CheckerFrameworkSettings getInstance(final Project project) {
@@ -138,14 +130,14 @@ public class CheckerFrameworkSettings implements PersistentStateComponent<Checke
 
     public static class State {
         public @NotNull String myPathToCheckerJar;
-        public @NotNull Set<String> myAvailableCheckers;
+        public @NotNull Set<String> myBuiltInCheckers;
         public @NotNull Set<String> myCustomCheckers;
         public @NotNull Set<String> myEnabledCheckers;
         public @NotNull List<String> myOptions;
 
         public State() {
             myPathToCheckerJar = "";
-            myAvailableCheckers = new HashSet<String>();
+            myBuiltInCheckers = new HashSet<String>();
             myCustomCheckers = new HashSet<String>();
             myEnabledCheckers = new HashSet<String>();
             myOptions = new ArrayList<String>();
@@ -153,7 +145,7 @@ public class CheckerFrameworkSettings implements PersistentStateComponent<Checke
 
         public State(@NotNull State state) {
             myPathToCheckerJar = state.myPathToCheckerJar;
-            myAvailableCheckers = new HashSet<String>(state.myAvailableCheckers);
+            myBuiltInCheckers = new HashSet<String>(state.myBuiltInCheckers);
             myCustomCheckers = new HashSet<String>(state.myCustomCheckers);
             myEnabledCheckers = new HashSet<String>(state.myEnabledCheckers);
             myOptions = new ArrayList<String>(state.myOptions);
@@ -171,13 +163,13 @@ public class CheckerFrameworkSettings implements PersistentStateComponent<Checke
             if (!myPathToCheckerJar.equals(state.myPathToCheckerJar)) {
                 return false;
             }
-            if (!collectionEquals(myEnabledCheckers, state.myEnabledCheckers)) {
+            if (!collectionEquals(myBuiltInCheckers, state.myBuiltInCheckers)) {
                 return false;
             }
             if (!collectionEquals(myCustomCheckers, state.myCustomCheckers)) {
                 return false;
             }
-            if (!collectionEquals(myAvailableCheckers, state.myAvailableCheckers)) {
+            if (!collectionEquals(myEnabledCheckers, state.myEnabledCheckers)) {
                 return false;
             }
             if (!collectionEquals(myOptions, state.myOptions)) {
@@ -189,7 +181,8 @@ public class CheckerFrameworkSettings implements PersistentStateComponent<Checke
         @Override
         public int hashCode() {
             int result = myPathToCheckerJar.hashCode();
-            result = 31 * result + myAvailableCheckers.hashCode();
+            result = 31 * result + myBuiltInCheckers.hashCode();
+            result = 31 * result + myCustomCheckers.hashCode();
             result = 31 * result + myEnabledCheckers.hashCode();
             return result;
         }

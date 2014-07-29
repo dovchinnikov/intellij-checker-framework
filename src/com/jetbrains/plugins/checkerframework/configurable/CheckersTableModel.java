@@ -30,7 +30,7 @@ public class CheckersTableModel extends AbstractTableModel {
 
     @Override
     public int getRowCount() {
-        return mySettings.getAllCheckers().size();
+        return mySettings.getCheckers().size();
     }
 
     @Override
@@ -40,13 +40,13 @@ public class CheckersTableModel extends AbstractTableModel {
 
     @Override
     public Object getValueAt(int row, int col) {
-        final String clazzName = mySettings.getAllCheckers().get(row);
+        final String clazzName = mySettings.getCheckers().get(row);
         return col == 0 ? mySettings.getEnabledCheckers().contains(clazzName) : clazzName;
     }
 
     @Override
     public void setValueAt(Object value, int row, int col) {
-        final String clazzName = mySettings.getAllCheckers().get(row);
+        final String clazzName = mySettings.getCheckers().get(row);
         if (Boolean.TRUE.equals(value)) {
             mySettings.getEnabledCheckers().add(clazzName);
         } else {
