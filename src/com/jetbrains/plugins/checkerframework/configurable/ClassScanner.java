@@ -4,6 +4,7 @@ import com.intellij.openapi.diagnostic.Logger;
 import org.jetbrains.annotations.NonNls;
 import org.jetbrains.annotations.NotNull;
 
+import javax.annotation.processing.Processor;
 import java.io.File;
 import java.io.IOException;
 import java.lang.reflect.Modifier;
@@ -30,18 +31,18 @@ public class ClassScanner {
      * which are children of given {@code superclass}.
      */
     @NotNull
-    public static Set<Class> findChildren(final @NotNull File jarFile,
-                                          final @NotNull String superclassFQN,
-                                          final @NotNull String packageRestriction,
-                                          final @NotNull ClassLoader parent) {
-        final Set<Class> result = new HashSet<Class>();
+    public static Set<Class<? extends Processor>> findChildren(final @NotNull File jarFile,
+                                                               final @NotNull String superclassFQN,
+                                                               final @NotNull String packageRestriction,
+                                                               final @NotNull ClassLoader parent) {
+        final Set<Class<? extends Processor>> result = new HashSet<Class<? extends Processor>>();
 
         JarFile jar = null;
         try {
             //noinspection IOResourceOpenedButNotSafelyClosed
             jar = new JarFile(jarFile);
             final URLClassLoader jarClassLoader = new URLClassLoader(new URL[]{jarFile.toURI().toURL()}, parent);
-            final Class superclazz = jarClassLoader.loadClass(superclassFQN);
+            final Class<? extends Processor> superclazz = jarClassLoader.loadClass(superclassFQN).asSubclass(Processor.class);
 
             for (final JarEntry entry : Collections.list(jar.entries())) {
                 if (!entry.isDirectory() && entry.toString().endsWith(".class")) {
@@ -58,7 +59,7 @@ public class ClassScanner {
                             continue;
                         }
 
-                        final Class clazz = jarClassLoader.loadClass(clazzName).asSubclass(superclazz);
+                        final Class<? extends Processor> clazz = jarClassLoader.loadClass(clazzName).asSubclass(superclazz);
 
                         if (!Modifier.isAbstract(clazz.getModifiers()) && !clazz.isAnonymousClass()) {
                             result.add(clazz);
