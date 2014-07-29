@@ -156,7 +156,15 @@ public class CheckerFrameworkConfigurableUI {
     private class AddCustomCheckerButton extends AnActionButton {
 
         private final @Nullable PsiClass myProcessorInterface;
-        private final TreeClassChooser myChooser;
+        private final ClassFilter myClassFilter = new ClassFilter() {
+            @Override
+            public boolean isAccepted(final PsiClass psiClazz) {
+                assert myProcessorInterface != null;
+                return psiClazz.getQualifiedName() != null
+                       && !mySettings.getBuiltInCheckers().contains(psiClazz.getQualifiedName())
+                       && psiClazz.isInheritor(myProcessorInterface, true);
+            }
+        };
 
         public AddCustomCheckerButton() {
             super("Add custom checker", AllIcons.ToolbarDecorator.AddClass);
@@ -165,26 +173,16 @@ public class CheckerFrameworkConfigurableUI {
                 GlobalSearchScope.allScope(myProject)
             );
             setEnabled(myProcessorInterface != null);
-            myChooser = myProcessorInterface == null
-                        ? null
-                        : TreeClassChooserFactory.getInstance(myProject).createNoInnerClassesScopeChooser(
-                            UIBundle.message("class.filter.editor.choose.class.title"),
-                            GlobalSearchScope.allScope(myProject),
-                            new ClassFilter() {
-                                @Override
-                                public boolean isAccepted(final PsiClass psiClazz) {
-                                    return psiClazz.getQualifiedName() != null
-                                           && !mySettings.getBuiltInCheckers().contains(psiClazz.getQualifiedName())
-                                           && psiClazz.isInheritor(myProcessorInterface, true);
-                                }
-                            },
-                            null
-                        );
         }
 
         @Override
         public void actionPerformed(AnActionEvent e) {
-            assert myChooser != null;
+            final TreeClassChooser myChooser = TreeClassChooserFactory.getInstance(myProject).createNoInnerClassesScopeChooser(
+                UIBundle.message("class.filter.editor.choose.class.title"),
+                GlobalSearchScope.allScope(myProject),
+                myClassFilter,
+                null
+            );
             myChooser.showDialog();
             final PsiClass selectedClass = myChooser.getSelected();
             if (selectedClass != null) {
