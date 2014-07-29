@@ -91,9 +91,12 @@ public abstract class CheckerFrameworkConfigurableUI {
         myAvailableCheckersTable.getRowSorter().toggleSortOrder(1);
 
         myAvailableCheckersPanel = ToolbarDecorator.createDecorator(myAvailableCheckersTable)
-            .setAddAction(
-                getAddCustomCheckerHandler()
-            ).addExtraAction(new AnActionButton("Select all", AllIcons.Actions.Selectall) {
+            .addExtraAction(new AnActionButton("Add custom checker", AllIcons.ToolbarDecorator.AddClass) {
+                @Override
+                public void actionPerformed(AnActionEvent e) {
+                    getAddCustomCheckerHandler().run(this);
+                }
+            }).addExtraAction(new AnActionButton("Select all", AllIcons.Actions.Selectall) {
                 @Override
                 public void actionPerformed(AnActionEvent e) {
                     for (int i = 0; i < myAvailableCheckersTable.getRowCount(); i++) {
