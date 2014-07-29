@@ -1,37 +1,55 @@
 package com.jetbrains.plugins.checkerframework.configurable;
 
 import com.intellij.icons.AllIcons;
+import com.intellij.ide.util.ClassFilter;
+import com.intellij.ide.util.TreeClassChooser;
+import com.intellij.ide.util.TreeClassChooserFactory;
 import com.intellij.openapi.actionSystem.AnActionEvent;
 import com.intellij.openapi.fileChooser.FileChooserDescriptor;
+import com.intellij.openapi.project.Project;
 import com.intellij.openapi.ui.ComponentWithBrowseButton;
 import com.intellij.openapi.ui.TextComponentAccessor;
 import com.intellij.openapi.ui.TextFieldWithBrowseButton;
+import com.intellij.openapi.util.text.StringUtil;
+import com.intellij.psi.JavaPsiFacade;
+import com.intellij.psi.PsiClass;
+import com.intellij.psi.search.GlobalSearchScope;
 import com.intellij.ui.*;
 import com.intellij.ui.components.JBLabel;
 import com.intellij.ui.table.JBTable;
 import com.intellij.util.ui.EditableModel;
+import org.jetbrains.annotations.Nullable;
 
 import javax.swing.*;
-import javax.swing.event.DocumentListener;
+import javax.swing.event.DocumentEvent;
 import javax.swing.table.TableCellEditor;
 import javax.swing.table.TableModel;
+import java.awt.*;
+import java.io.File;
 
-public abstract class CheckerFrameworkConfigurableUI {
+public class CheckerFrameworkConfigurableUI {
 
     private static final FileChooserDescriptor JAR_DESCRIPTOR = new FileChooserDescriptor(false, false, true, true, false, false);
 
+    private final Project myProject;
+    private final CheckerFrameworkSettings mySettings;
+
     private JPanel myRootPane;
-    @SuppressWarnings("UnusedDeclaration")
-    private JPanel myAvailableCheckersPanel;
-    private JBTable myAvailableCheckersTable;
     private TextFieldWithBrowseButton myPathToCheckerJarField;
     private HyperlinkLabel myDownloadCheckerLink;
-    private JBLabel myErrorLabel;
-    @SuppressWarnings("UnusedDeclaration")
+    private JPanel myAvailableCheckersPanel;
+    private JBTable myAvailableCheckersTable;
     private JPanel myOptionsPanel;
     private JBTable myOptionsTable;
+    private JBLabel myErrorLabel;
 
-    public CheckerFrameworkConfigurableUI() {
+    private final CheckersTableModel myCheckersTableModel;
+
+    public CheckerFrameworkConfigurableUI(final Project project, final CheckerFrameworkSettings settings) {
+        myProject = project;
+        mySettings = settings;
+
+        myPathToCheckerJarField.getTextField().getDocument().addDocumentListener(new PathToJarChangeListener());
         myPathToCheckerJarField.addBrowseFolderListener(
             null,
             new ComponentWithBrowseButton.BrowseFolderActionListener<JTextField>(
@@ -43,45 +61,12 @@ public abstract class CheckerFrameworkConfigurableUI {
                 TextComponentAccessor.TEXT_FIELD_WHOLE_TEXT
             )
         );
+
         myDownloadCheckerLink.setHyperlinkText("Click here to download Checker Framework");
         myDownloadCheckerLink.addHyperlinkListener(new DownloadCheckerFrameworkLinkListener(myRootPane, myPathToCheckerJarField));
-        myErrorLabel.setIcon(AllIcons.General.BalloonWarning);
-    }
 
-    public JComponent getRoot() {
-        return myRootPane;
-    }
-
-    public String getPathToCheckerJar() {
-        return myPathToCheckerJarField.getText();
-    }
-
-    public void setPathToCheckerJar(String pathToCheckerJar) {
-        myPathToCheckerJarField.setText(pathToCheckerJar);
-    }
-
-    public void showWarning(String text) {
-        myErrorLabel.setText(text);
-        myErrorLabel.setVisible(true);
-    }
-
-    public void hideWarning() {
-        myErrorLabel.setVisible(false);
-    }
-
-    protected abstract DocumentListener getPathToJarChangeListener();
-
-    protected abstract TableModel getCheckersModel();
-
-    protected abstract TableModel getOptionsModel();
-
-    protected abstract AnActionButtonRunnable getAddCustomCheckerHandler();
-
-    private void createUIComponents() {
-        myPathToCheckerJarField = new TextFieldWithBrowseButton();
-        myPathToCheckerJarField.getTextField().getDocument().addDocumentListener(getPathToJarChangeListener());
-
-        myAvailableCheckersTable = new JBTable(getCheckersModel());
+        myCheckersTableModel = new CheckersTableModel(settings);
+        myAvailableCheckersTable = new JBTable(myCheckersTableModel);
         myAvailableCheckersTable.setAutoCreateRowSorter(true);
         myAvailableCheckersTable.setAutoCreateColumnsFromModel(true);
         myAvailableCheckersTable.setStriped(true);
@@ -89,14 +74,11 @@ public abstract class CheckerFrameworkConfigurableUI {
         myAvailableCheckersTable.getColumnModel().getColumn(0).setMaxWidth(120);
         myAvailableCheckersTable.getTableHeader().setReorderingAllowed(false);
         myAvailableCheckersTable.getRowSorter().toggleSortOrder(1);
-
-        myAvailableCheckersPanel = ToolbarDecorator.createDecorator(myAvailableCheckersTable)
-            .addExtraAction(new AnActionButton("Add custom checker", AllIcons.ToolbarDecorator.AddClass) {
-                @Override
-                public void actionPerformed(AnActionEvent e) {
-                    getAddCustomCheckerHandler().run(this);
-                }
-            }).addExtraAction(new AnActionButton("Select all", AllIcons.Actions.Selectall) {
+        myAvailableCheckersPanel.add(
+            ToolbarDecorator.createDecorator(myAvailableCheckersTable)
+                .addExtraAction(
+                    new AddCustomCheckerButton()
+                ).addExtraAction(new AnActionButton("Select all", AllIcons.Actions.Selectall) {
                 @Override
                 public void actionPerformed(AnActionEvent e) {
                     for (int i = 0; i < myAvailableCheckersTable.getRowCount(); i++) {
@@ -110,21 +92,107 @@ public abstract class CheckerFrameworkConfigurableUI {
                         myAvailableCheckersTable.setValueAt(false, i, 0);
                     }
                 }
-            }).createPanel();
+            }).createPanel(),
+            BorderLayout.CENTER
+        );
 
-        myOptionsTable = new JBTable(getOptionsModel());
-        myOptionsPanel = ToolbarDecorator.createDecorator(myOptionsTable)
-            .setAddAction(new AnActionButtonRunnable() {
-                @Override
-                public void run(AnActionButton anActionButton) {
-                    final TableCellEditor cellEditor = myOptionsTable.getCellEditor();
-                    if (cellEditor != null) {
-                        cellEditor.stopCellEditing();
+        myOptionsTable = new JBTable(new OptionsTableModel(settings));
+        myOptionsPanel.add(
+            ToolbarDecorator.createDecorator(myOptionsTable)
+                .setAddAction(new AnActionButtonRunnable() {
+                    @Override
+                    public void run(AnActionButton anActionButton) {
+                        final TableCellEditor cellEditor = myOptionsTable.getCellEditor();
+                        if (cellEditor != null) {
+                            cellEditor.stopCellEditing();
+                        }
+                        final TableModel model = myOptionsTable.getModel();
+                        ((EditableModel)model).addRow();
+                        TableUtil.editCellAt(myOptionsTable, model.getRowCount() - 1, 0);
                     }
-                    final TableModel model = myOptionsTable.getModel();
-                    ((EditableModel)model).addRow();
-                    TableUtil.editCellAt(myOptionsTable, model.getRowCount() - 1, 0);
+                }).createPanel(),
+            BorderLayout.CENTER
+        );
+
+        myErrorLabel.setIcon(AllIcons.General.BalloonWarning);
+    }
+
+    public JComponent getRoot() {
+        return myRootPane;
+    }
+
+    public void reset() {
+        myPathToCheckerJarField.setText(mySettings.getPathToCheckerJar());
+    }
+
+    private void showWarning(String text) {
+        myErrorLabel.setText(text);
+        myErrorLabel.setVisible(true);
+    }
+
+    private class PathToJarChangeListener extends DocumentAdapter {
+
+        @Override
+        protected void textChanged(DocumentEvent e) {
+            myErrorLabel.setVisible(false);
+
+            final String pathToCheckerJar = myPathToCheckerJarField.getText();
+            if (StringUtil.isEmptyOrSpaces(pathToCheckerJar)) {
+                showWarning("Path to checker.jar is not selected");
+            } else {
+                final File checkerJar = new File(pathToCheckerJar);
+                if (!checkerJar.exists()) {
+                    showWarning("'" + pathToCheckerJar + "' doesn't exist");
+                } else if (checkerJar.isDirectory()) {
+                    showWarning("'" + pathToCheckerJar + "' is a directory");
                 }
-            }).createPanel();
+            }
+
+            mySettings.setPathToCheckerJar(pathToCheckerJar);
+            myCheckersTableModel.fireTableDataChanged();
+        }
+    }
+
+    private class AddCustomCheckerButton extends AnActionButton {
+
+        private final @Nullable PsiClass myProcessorInterface;
+        private final TreeClassChooser myChooser;
+
+        public AddCustomCheckerButton() {
+            super("Add custom checker", AllIcons.ToolbarDecorator.AddClass);
+            myProcessorInterface = JavaPsiFacade.getInstance(myProject).findClass(
+                CheckerFrameworkSettings.CHECKERS_BASE_CLASS,
+                GlobalSearchScope.allScope(myProject)
+            );
+            setEnabled(myProcessorInterface != null);
+            myChooser = myProcessorInterface == null
+                        ? null
+                        : TreeClassChooserFactory.getInstance(myProject).createNoInnerClassesScopeChooser(
+                            UIBundle.message("class.filter.editor.choose.class.title"),
+                            GlobalSearchScope.allScope(myProject),
+                            new ClassFilter() {
+                                @Override
+                                public boolean isAccepted(final PsiClass psiClazz) {
+                                    return psiClazz.getQualifiedName() != null
+                                           && !mySettings.getBuiltInCheckers().contains(psiClazz.getQualifiedName())
+                                           && psiClazz.isInheritor(myProcessorInterface, true);
+                                }
+                            },
+                            null
+                        );
+        }
+
+        @Override
+        public void actionPerformed(AnActionEvent e) {
+            assert myChooser != null;
+            myChooser.showDialog();
+            final PsiClass selectedClass = myChooser.getSelected();
+            if (selectedClass != null) {
+                final String fqn = selectedClass.getQualifiedName();
+                assert fqn != null;
+                mySettings.addCustomChecker(fqn);
+                myCheckersTableModel.fireTableDataChanged();
+            }
+        }
     }
 }

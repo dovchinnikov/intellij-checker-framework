@@ -1,21 +1,16 @@
 package com.jetbrains.plugins.checkerframework.configurable;
 
 import com.intellij.util.ui.EditableModel;
+import org.jetbrains.annotations.NotNull;
 
 import javax.swing.table.AbstractTableModel;
-import java.util.List;
 
 public class OptionsTableModel extends AbstractTableModel implements EditableModel {
 
-    private List<String> myData;
+    private final @NotNull CheckerFrameworkSettings mySettings;
 
-    public OptionsTableModel(List<String> data) {
-        myData = data;
-    }
-
-    public void setData(List<String> data) {
-        myData = data;
-        fireTableDataChanged();
+    public OptionsTableModel(@NotNull CheckerFrameworkSettings settings) {
+        mySettings = settings;
     }
 
     @Override
@@ -30,7 +25,7 @@ public class OptionsTableModel extends AbstractTableModel implements EditableMod
 
     @Override
     public int getRowCount() {
-        return myData.size();
+        return mySettings.getOptions().size();
     }
 
     @Override
@@ -45,24 +40,24 @@ public class OptionsTableModel extends AbstractTableModel implements EditableMod
 
     @Override
     public Object getValueAt(int rowIndex, int columnIndex) {
-        return myData.get(rowIndex);
+        return mySettings.getOptions().get(rowIndex);
     }
 
     @Override
     public void setValueAt(Object aValue, int rowIndex, int columnIndex) {
-        myData.set(rowIndex, String.valueOf(aValue));
+        mySettings.getOptions().set(rowIndex, String.valueOf(aValue));
     }
 
     @Override
     public void addRow() {
-        myData.add(null);
-        final int index = myData.size() - 1;
+        mySettings.getOptions().add("");
+        final int index = mySettings.getOptions().size() - 1;
         fireTableRowsInserted(index, index);
     }
 
     @Override
     public void removeRow(int idx) {
-        myData.remove(idx);
+        mySettings.getOptions().remove(idx);
         fireTableRowsDeleted(idx, idx);
     }
 

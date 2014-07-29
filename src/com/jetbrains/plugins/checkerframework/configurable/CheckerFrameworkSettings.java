@@ -44,6 +44,12 @@ public class CheckerFrameworkSettings implements PersistentStateComponent<Checke
         myState.myPathToCheckerJar = pathToCheckerJar;
     }
 
+
+    @NotNull
+    public Set<String> getBuiltInCheckers() {
+        return myState.myBuiltInCheckers;
+    }
+
     @NotNull
     public Set<String> getEnabledCheckers() {
         return myState.myEnabledCheckers;
