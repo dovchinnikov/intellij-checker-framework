@@ -2,8 +2,11 @@ package com.jetbrains.plugins.checkerframework.configurable;
 
 import com.intellij.openapi.components.*;
 import com.intellij.openapi.project.Project;
+import com.intellij.openapi.util.Condition;
+import com.intellij.util.containers.ContainerUtil;
 import org.jetbrains.annotations.NotNull;
 
+import javax.annotation.processing.Processor;
 import java.io.File;
 import java.util.*;
 
@@ -23,7 +26,8 @@ public class CheckerFrameworkSettings implements PersistentStateComponent<Checke
 
     private @NotNull State myState = new State();
     private final @NotNull List<String> myCheckers = new ArrayList<String>();
-    private final @NotNull List<Class> myCheckerClasses = new ArrayList<Class>();
+    private final @NotNull List<Class<? extends Processor>> myCheckerClasses = new ArrayList<Class<? extends Processor>>();
+    //private final @NotNull List<Class<? extends Processor>> myEnabledCheckerClasses = new ArrayList<Class<? extends Processor>>();
     private boolean needReload = true;
 
     @SuppressWarnings("UnusedDeclaration")
@@ -61,6 +65,21 @@ public class CheckerFrameworkSettings implements PersistentStateComponent<Checke
             loadClasses();
         }
         return myCheckers;
+    }
+
+    @NotNull
+    public Set<Class<? extends Processor>> getEnabledCheckerClasses() {
+        if (needReload) {
+            loadClasses();
+        }
+        final Set<Class<? extends Processor>> result = new HashSet<Class<? extends Processor>>(myCheckerClasses);
+        ContainerUtil.retainAll(result, new Condition<Class<? extends Processor>>() {
+            @Override
+            public boolean value(Class<? extends Processor> aClass) {
+                return myState.myEnabledCheckers.contains(aClass.getCanonicalName());
+            }
+        });
+        return result;
     }
 
     public void addCustomChecker(@NotNull String clazzFQN) {
@@ -115,7 +134,7 @@ public class CheckerFrameworkSettings implements PersistentStateComponent<Checke
         );
 
         myState.myBuiltInCheckers.clear();
-        for (final Class clazz : myCheckerClasses) {
+        for (final Class<? extends Processor> clazz : myCheckerClasses) {
             myState.myBuiltInCheckers.add(clazz.getCanonicalName());
         }
 
