@@ -6,21 +6,18 @@ import com.intellij.codeInspection.ProblemDescriptor;
 import com.intellij.codeInspection.ProblemHighlightType;
 import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.psi.PsiElement;
+import com.intellij.psi.PsiExpression;
 import com.intellij.psi.PsiFile;
-import com.jetbrains.plugins.checkerframework.configurable.CheckerFrameworkSettings;
-import com.jetbrains.plugins.checkerframework.inspection.util.CompositeChecker;
-import com.jetbrains.plugins.checkerframework.inspection.util.VirtualJavaFileObject;
+import com.intellij.psi.PsiVariable;
+import com.intellij.psi.util.PsiTreeUtil;
+import com.jetbrains.plugins.checkerframework.inspection.fix.AddTypeCastFix;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
-import org.jetbrains.jps.cmdline.ClasspathBootstrap;
 
-import javax.annotation.processing.Processor;
 import javax.tools.*;
-import javax.tools.JavaCompiler.*;
-import java.io.File;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collection;
+import java.util.List;
 import java.util.Locale;
 
 /**
@@ -30,77 +27,57 @@ import java.util.Locale;
 public class AwesomeInspection extends AbstractBaseJavaLocalInspectionTool {
 
     private static final Logger LOG = Logger.getInstance(AwesomeInspection.class);
-    private static final JavaCompiler JAVA_COMPILER;
-
-    static {
-        try {
-            JAVA_COMPILER = (JavaCompiler)Class.forName(
-                ToolProvider.getSystemJavaCompiler().getClass().getCanonicalName()
-            ).newInstance();
-        } catch (InstantiationException e) {
-            LOG.error(e);
-            throw new RuntimeException(e);
-        } catch (IllegalAccessException e) {
-            LOG.error(e);
-            throw new RuntimeException(e);
-        } catch (ClassNotFoundException e) {
-            LOG.error(e);
-            throw new RuntimeException(e);
-        }
-    }
-
-    private static final StandardJavaFileManager FILE_MANAGER = JAVA_COMPILER.getStandardFileManager(null, null, null);
 
     @Nullable
     @Override
-    public ProblemDescriptor[] checkFile(@NotNull PsiFile file, @NotNull InspectionManager manager, boolean isOnTheFly) {
-        final CheckerFrameworkSettings mySettings = CheckerFrameworkSettings.getInstance(file.getProject());
-        final Collection<Class<? extends Processor>> enabledCheckers = mySettings.getEnabledCheckerClasses();
-        if (enabledCheckers.isEmpty()) {
-            return null;
-        }
-        final Collection<String> COMPILE_OPTIONS = Arrays.asList(
-            "-proc:only",
-            "-AprintErrorStack", "-AprintAllQualifiers",
-            "-classpath",
-            mySettings.getPathToCheckerJar()
-            + File.pathSeparator
-            + ClasspathBootstrap.getResourcePath(JAVA_COMPILER.getClass())
-        );
-        final DiagnosticCollector<JavaFileObject> diagnosticCollector = new DiagnosticCollector<JavaFileObject>();
-        final CompilationTask task = JAVA_COMPILER.getTask(
-            null,
-            FILE_MANAGER,
-            diagnosticCollector,
-            COMPILE_OPTIONS,
-            null,
-            Arrays.asList(new VirtualJavaFileObject(file))
-        );
-        task.setProcessors(
-            Arrays.asList(
-                new CompositeChecker(
-                    mySettings.getEnabledCheckerClasses()
-                )
-            )
-        );
-        task.call();
-
+    public ProblemDescriptor[] checkFile(@NotNull final PsiFile file, @NotNull final InspectionManager manager, final boolean isOnTheFly) {
+        final List<Diagnostic<? extends JavaFileObject>> messages = CheckerFrameworkCompiler
+            .getInstance(file.getProject())
+            .getMessages(file);
         final Collection<ProblemDescriptor> problems = new ArrayList<ProblemDescriptor>();
-        for (Diagnostic<? extends JavaFileObject> diagnostic : diagnosticCollector.getDiagnostics()) {
-            final PsiElement startElement = file.findElementAt((int)diagnostic.getStartPosition());
-            final PsiElement endElement = file.findElementAt((int)diagnostic.getEndPosition() - 1);
-            if (startElement != null && startElement.isValid() && startElement.isPhysical()
-                && endElement != null && endElement.isValid() && endElement.isPhysical()
-                && startElement.getTextRange().getStartOffset() < endElement.getTextRange().getEndOffset()) {
-                problems.add(
-                    manager.createProblemDescriptor(
+        for (Diagnostic diagnostic : messages) {
+            LOG.debug(String.valueOf(diagnostic));
+            final @Nullable PsiElement startElement = file.findElementAt((int)diagnostic.getStartPosition());
+            if (startElement == null) {
+                continue;
+            }
+            final @Nullable PsiElement endElement = file.findElementAt((int)diagnostic.getEndPosition() - 1);
+            if (endElement == null) {
+                continue;
+            }
+            if (startElement.getTextRange().getStartOffset() < endElement.getTextRange().getEndOffset()) {
+                ProblemDescriptor problemDescriptor = null;
+                final @NotNull String messageText = diagnostic.getMessage(Locale.getDefault());
+
+                if (messageText.contains("assignment.type.incompatible")) {
+                    final PsiElement parent = PsiTreeUtil.findCommonParent(startElement, endElement);
+                    final PsiExpression enclosingExpression = PsiTreeUtil.getNonStrictParentOfType(parent,
+                                                                                                   PsiExpression.class);
+                    if (enclosingExpression == null) {
+                        continue;
+                    }
+                    final PsiVariable variable = PsiTreeUtil.getNonStrictParentOfType(enclosingExpression, PsiVariable.class);
+                    if (variable != null) {
+                        problemDescriptor = manager.createProblemDescriptor(
+                            startElement,
+                            endElement,
+                            messageText,
+                            ProblemHighlightType.GENERIC_ERROR,
+                            isOnTheFly,
+                            new AddTypeCastFix(variable.getType(), enclosingExpression)
+                        );
+                    }
+                }
+                if (problemDescriptor == null) {
+                    problemDescriptor = manager.createProblemDescriptor(
                         startElement,
                         endElement,
                         diagnostic.getMessage(Locale.getDefault()),
                         ProblemHighlightType.ERROR,
                         isOnTheFly
-                    )
-                );
+                    );
+                }
+                problems.add(problemDescriptor);
             }
         }
         return problems.toArray(new ProblemDescriptor[problems.size()]);

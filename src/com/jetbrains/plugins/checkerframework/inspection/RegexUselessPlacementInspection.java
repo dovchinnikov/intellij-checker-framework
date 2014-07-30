@@ -36,14 +36,18 @@ public class RegexUselessPlacementInspection extends AbstractBaseJavaLocalInspec
                 PsiType annotatedType = null;
                 if (owner instanceof PsiModifierList) {
                     final PsiModifierList modifierList = (PsiModifierList)owner;
-                    modifierListOwner = (PsiModifierListOwner)modifierList.getContext();
-                    if (modifierListOwner instanceof PsiVariable) {
-                        annotatedType = ((PsiVariable)modifierListOwner).getType();
-                    } else if (modifierListOwner instanceof PsiMethod) {
-                        annotatedType = ((PsiMethod)modifierListOwner).getReturnType();
-                    }
-                    while (annotatedType instanceof PsiArrayType) {
-                        annotatedType = ((PsiArrayType)annotatedType).getComponentType();
+                    if (modifierList.getContext() instanceof PsiModifierListOwner) {
+                        modifierListOwner = (PsiModifierListOwner)modifierList.getContext();
+                        if (modifierListOwner instanceof PsiVariable) {
+                            annotatedType = ((PsiVariable)modifierListOwner).getType();
+                        } else if (modifierListOwner instanceof PsiMethod) {
+                            annotatedType = ((PsiMethod)modifierListOwner).getReturnType();
+                        }
+                        while (annotatedType instanceof PsiArrayType) {
+                            annotatedType = ((PsiArrayType)annotatedType).getComponentType();
+                        }
+                    } else {
+                        System.out.println(modifierList.getContext());
                     }
                 } else if (owner instanceof PsiTypeElement) {
                     annotatedType = ((PsiTypeElement)owner).getType();

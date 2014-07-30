@@ -10,6 +10,7 @@
 
     <extensions defaultExtensionNs="com.intellij">
         <projectService serviceImplementation="com.jetbrains.plugins.checkerframework.configurable.CheckerFrameworkSettings"/>
+        <projectService serviceImplementation="com.jetbrains.plugins.checkerframework.inspection.CheckerFrameworkCompiler"/>
         <projectConfigurable instance="com.jetbrains.plugins.checkerframework.configurable.CheckerFrameworkConfigurable"/>
 
         <localInspection
