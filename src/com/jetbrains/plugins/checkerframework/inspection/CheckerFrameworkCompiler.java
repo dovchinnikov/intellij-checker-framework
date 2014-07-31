@@ -5,19 +5,16 @@ import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.project.Project;
 import com.intellij.psi.PsiFile;
 import com.jetbrains.plugins.checkerframework.configurable.CheckerFrameworkSettings;
-import com.jetbrains.plugins.checkerframework.inspection.util.CompositeChecker;
 import com.jetbrains.plugins.checkerframework.inspection.util.VirtualJavaFileObject;
-import com.sun.source.util.JavacTask;
+import org.checkerframework.framework.source.AggregateChecker;
+import org.checkerframework.framework.source.SourceChecker;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.jps.cmdline.ClasspathBootstrap;
 
 import javax.tools.*;
 import javax.tools.JavaCompiler.*;
 import java.io.File;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.List;
+import java.util.*;
 
 public class CheckerFrameworkCompiler {
 
@@ -60,6 +57,7 @@ public class CheckerFrameworkCompiler {
         );
     }
 
+    @SuppressWarnings("unchecked")
     @NotNull
     public CompilationTask createCompilationTask(@NotNull DiagnosticListener<? super JavaFileObject> diagnosticListener,
                                                  @NotNull PsiFile file) {
@@ -73,7 +71,24 @@ public class CheckerFrameworkCompiler {
         );
         task.setProcessors(
             Arrays.asList(
-                new CompositeChecker(mySettings.getEnabledCheckerClasses(), (JavacTask)task)
+                new AggregateChecker() {
+                    @Override
+                    protected Collection<Class<? extends SourceChecker>> getSupportedCheckers() {
+                        final Set<Class<? extends SourceChecker>> myClasses = new HashSet<Class<? extends SourceChecker>>();
+                        for (Class<?> clazz : mySettings.getEnabledCheckerClasses()) {
+                            myClasses.add(clazz.asSubclass(SourceChecker.class));
+                        }
+                        return myClasses;
+                    }
+
+                    @Override
+                    public void initChecker() {
+                        for (SourceChecker checker : checkers) {
+                            checker.init(processingEnv);
+                        }
+                        super.initChecker();
+                    }
+                }
             )
         );
         return task;

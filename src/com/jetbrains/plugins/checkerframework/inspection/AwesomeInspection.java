@@ -3,11 +3,7 @@ package com.jetbrains.plugins.checkerframework.inspection;
 import com.intellij.codeInspection.*;
 import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.psi.PsiElement;
-import com.intellij.psi.PsiExpression;
 import com.intellij.psi.PsiFile;
-import com.intellij.psi.PsiVariable;
-import com.intellij.psi.util.PsiTreeUtil;
-import com.jetbrains.plugins.checkerframework.inspection.fix.AddTypeCastFix;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -32,10 +28,12 @@ public class AwesomeInspection extends AbstractBaseJavaLocalInspectionTool {
         final List<Diagnostic<? extends JavaFileObject>> messages = CheckerFrameworkCompiler
             .getInstance(file.getProject())
             .getMessages(file);
-        System.out.println("============================================");
         final Collection<ProblemDescriptor> problems = new ArrayList<ProblemDescriptor>();
         for (final Diagnostic diagnostic : messages) {
-            System.out.println(diagnostic);
+            if (!diagnostic.getCode().equals(PROC_CODE)) {
+                LOG.warn("Non processor diagnostic:\n" + diagnostic);
+                continue;
+            }
             final String messageText = diagnostic.getMessage(Locale.getDefault());
             final @NotNull String problemKey;
             {
@@ -44,20 +42,22 @@ public class AwesomeInspection extends AbstractBaseJavaLocalInspectionTool {
                 if (start >= 0 && end >= start) {
                     problemKey = messageText.substring(start + 1, end);
                 } else {
-                    LOG.debug("problem key not found");
+                    LOG.warn("problem key not found");
                     continue;
                 }
             }
             final @Nullable PsiElement startElement = file.findElementAt((int)diagnostic.getStartPosition());
             if (startElement == null) {
+                LOG.warn("Cannot find start element:\n" + diagnostic);
                 continue;
             }
             final @Nullable PsiElement endElement = file.findElementAt((int)diagnostic.getEndPosition() - 1);
             if (endElement == null) {
+                LOG.warn("Cannot find end element:\n" + diagnostic);
                 continue;
             }
             if (startElement.getTextRange().getStartOffset() >= endElement.getTextRange().getEndOffset()) {
-                LOG.error("Some shit happened");
+                LOG.warn("Wrong start & end offset: \n" + diagnostic);
                 continue;
             }
             final ProblemDescriptor problemDescriptor = manager.createProblemDescriptor(
@@ -73,10 +73,13 @@ public class AwesomeInspection extends AbstractBaseJavaLocalInspectionTool {
         return problems.toArray(new ProblemDescriptor[problems.size()]);
     }
 
+    @SuppressWarnings("UnusedParameters")
     @Nullable
     LocalQuickFix[] buildFixes(final @NotNull String problemKey,
                                final @NotNull PsiElement startElement,
                                final @NotNull PsiElement endElement) {
+        return null;
+        /*
         List<LocalQuickFix> fixes = new ArrayList<LocalQuickFix>();
         if (problemKey.equals("assignment.type.incompatible")) {
             final PsiElement parent = PsiTreeUtil.findCommonParent(startElement, endElement);
@@ -92,5 +95,6 @@ public class AwesomeInspection extends AbstractBaseJavaLocalInspectionTool {
             return null;
         }
         return fixes.toArray(new LocalQuickFix[fixes.size()]);
+        */
     }
 }
