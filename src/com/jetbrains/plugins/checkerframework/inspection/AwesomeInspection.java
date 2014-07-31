@@ -1,9 +1,6 @@
 package com.jetbrains.plugins.checkerframework.inspection;
 
-import com.intellij.codeInspection.AbstractBaseJavaLocalInspectionTool;
-import com.intellij.codeInspection.InspectionManager;
-import com.intellij.codeInspection.ProblemDescriptor;
-import com.intellij.codeInspection.ProblemHighlightType;
+import com.intellij.codeInspection.*;
 import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiExpression;
@@ -27,6 +24,7 @@ import java.util.Locale;
 public class AwesomeInspection extends AbstractBaseJavaLocalInspectionTool {
 
     private static final Logger LOG = Logger.getInstance(AwesomeInspection.class);
+    private static final String PROC_CODE = "compiler.err.proc.messager";
 
     @Nullable
     @Override
@@ -34,9 +32,22 @@ public class AwesomeInspection extends AbstractBaseJavaLocalInspectionTool {
         final List<Diagnostic<? extends JavaFileObject>> messages = CheckerFrameworkCompiler
             .getInstance(file.getProject())
             .getMessages(file);
+        System.out.println("============================================");
         final Collection<ProblemDescriptor> problems = new ArrayList<ProblemDescriptor>();
-        for (Diagnostic diagnostic : messages) {
-            LOG.debug(String.valueOf(diagnostic));
+        for (final Diagnostic diagnostic : messages) {
+            System.out.println(diagnostic);
+            final String messageText = diagnostic.getMessage(Locale.getDefault());
+            final @NotNull String problemKey;
+            {
+                int start = messageText.indexOf('[');
+                int end = messageText.indexOf(']');
+                if (start >= 0 && end >= start) {
+                    problemKey = messageText.substring(start + 1, end);
+                } else {
+                    LOG.debug("problem key not found");
+                    continue;
+                }
+            }
             final @Nullable PsiElement startElement = file.findElementAt((int)diagnostic.getStartPosition());
             if (startElement == null) {
                 continue;
@@ -45,41 +56,41 @@ public class AwesomeInspection extends AbstractBaseJavaLocalInspectionTool {
             if (endElement == null) {
                 continue;
             }
-            if (startElement.getTextRange().getStartOffset() < endElement.getTextRange().getEndOffset()) {
-                ProblemDescriptor problemDescriptor = null;
-                final @NotNull String messageText = diagnostic.getMessage(Locale.getDefault());
-
-                if (messageText.contains("assignment.type.incompatible")) {
-                    final PsiElement parent = PsiTreeUtil.findCommonParent(startElement, endElement);
-                    final PsiExpression enclosingExpression = PsiTreeUtil.getNonStrictParentOfType(parent,
-                                                                                                   PsiExpression.class);
-                    if (enclosingExpression == null) {
-                        continue;
-                    }
-                    final PsiVariable variable = PsiTreeUtil.getNonStrictParentOfType(enclosingExpression, PsiVariable.class);
-                    if (variable != null) {
-                        problemDescriptor = manager.createProblemDescriptor(
-                            startElement,
-                            endElement,
-                            messageText,
-                            ProblemHighlightType.GENERIC_ERROR,
-                            isOnTheFly,
-                            new AddTypeCastFix(variable.getType(), enclosingExpression)
-                        );
-                    }
-                }
-                if (problemDescriptor == null) {
-                    problemDescriptor = manager.createProblemDescriptor(
-                        startElement,
-                        endElement,
-                        diagnostic.getMessage(Locale.getDefault()),
-                        ProblemHighlightType.ERROR,
-                        isOnTheFly
-                    );
-                }
-                problems.add(problemDescriptor);
+            if (startElement.getTextRange().getStartOffset() >= endElement.getTextRange().getEndOffset()) {
+                LOG.error("Some shit happened");
+                continue;
             }
+            final ProblemDescriptor problemDescriptor = manager.createProblemDescriptor(
+                startElement,
+                endElement,
+                messageText,
+                ProblemHighlightType.GENERIC_ERROR,
+                isOnTheFly,
+                buildFixes(problemKey, startElement, endElement)
+            );
+            problems.add(problemDescriptor);
         }
         return problems.toArray(new ProblemDescriptor[problems.size()]);
+    }
+
+    @Nullable
+    LocalQuickFix[] buildFixes(final @NotNull String problemKey,
+                               final @NotNull PsiElement startElement,
+                               final @NotNull PsiElement endElement) {
+        List<LocalQuickFix> fixes = new ArrayList<LocalQuickFix>();
+        if (problemKey.equals("assignment.type.incompatible")) {
+            final PsiElement parent = PsiTreeUtil.findCommonParent(startElement, endElement);
+            final PsiExpression enclosingExpression = PsiTreeUtil.getNonStrictParentOfType(parent,
+                                                                                           PsiExpression.class);
+            if (enclosingExpression != null) {
+                final PsiVariable variable = PsiTreeUtil.getNonStrictParentOfType(enclosingExpression, PsiVariable.class);
+                if (variable != null) {
+                    fixes.add(new AddTypeCastFix(variable.getType(), enclosingExpression));
+                }
+            }
+        } else {
+            return null;
+        }
+        return fixes.toArray(new LocalQuickFix[fixes.size()]);
     }
 }
