@@ -7,10 +7,10 @@ import com.intellij.psi.PsiFile;
 import com.jetbrains.plugins.checkerframework.configurable.CheckerFrameworkSettings;
 import com.jetbrains.plugins.checkerframework.inspection.util.CompositeChecker;
 import com.jetbrains.plugins.checkerframework.inspection.util.VirtualJavaFileObject;
+import com.sun.source.util.JavacTask;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.jps.cmdline.ClasspathBootstrap;
 
-import javax.annotation.processing.Processor;
 import javax.tools.*;
 import javax.tools.JavaCompiler.*;
 import java.io.File;
@@ -71,15 +71,12 @@ public class CheckerFrameworkCompiler {
             null,
             Arrays.asList(new VirtualJavaFileObject(file))
         );
-        task.setProcessors(createProcessor(mySettings.getEnabledCheckerClasses()));
-        return task;
-    }
-
-    @NotNull
-    public static Collection<? extends Processor> createProcessor(@NotNull Collection<Class<? extends Processor>> classes) {
-        return Arrays.asList(
-            new CompositeChecker(classes)
+        task.setProcessors(
+            Arrays.asList(
+                new CompositeChecker(mySettings.getEnabledCheckerClasses(), (JavacTask)task)
+            )
         );
+        return task;
     }
 
     public static CheckerFrameworkCompiler getInstance(@NotNull Project project) {
