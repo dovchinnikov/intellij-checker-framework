@@ -1,4 +1,4 @@
-package com.jetbrains.plugins.checkerframework.inspection.util;
+package com.jetbrains.plugins.checkerframework.util;
 
 import com.intellij.psi.PsiFile;
 

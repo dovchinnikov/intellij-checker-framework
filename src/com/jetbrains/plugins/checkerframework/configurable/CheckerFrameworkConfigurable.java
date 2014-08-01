@@ -3,6 +3,7 @@ package com.jetbrains.plugins.checkerframework.configurable;
 import com.intellij.openapi.options.Configurable;
 import com.intellij.openapi.options.ConfigurationException;
 import com.intellij.openapi.project.Project;
+import com.jetbrains.plugins.checkerframework.service.CheckerFrameworkSettings;
 import org.jetbrains.annotations.Nls;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;

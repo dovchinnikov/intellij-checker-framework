@@ -1,4 +1,4 @@
-package com.jetbrains.plugins.checkerframework.configurable;
+package com.jetbrains.plugins.checkerframework.util;
 
 import com.intellij.openapi.diagnostic.Logger;
 import org.jetbrains.annotations.NonNls;

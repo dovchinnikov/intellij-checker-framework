@@ -1,5 +1,7 @@
 package com.jetbrains.plugins.checkerframework.configurable;
 
+import com.jetbrains.plugins.checkerframework.service.CheckerFrameworkSettings;
+
 import javax.swing.table.AbstractTableModel;
 
 public class CheckersTableModel extends AbstractTableModel {

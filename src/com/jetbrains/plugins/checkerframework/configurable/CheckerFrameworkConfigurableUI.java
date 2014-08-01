@@ -18,6 +18,7 @@ import com.intellij.ui.*;
 import com.intellij.ui.components.JBLabel;
 import com.intellij.ui.table.JBTable;
 import com.intellij.util.ui.EditableModel;
+import com.jetbrains.plugins.checkerframework.service.CheckerFrameworkSettings;
 import org.jetbrains.annotations.Nullable;
 
 import javax.swing.*;

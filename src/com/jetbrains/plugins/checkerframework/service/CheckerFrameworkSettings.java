@@ -1,14 +1,23 @@
-package com.jetbrains.plugins.checkerframework.configurable;
+package com.jetbrains.plugins.checkerframework.service;
 
+import com.intellij.ide.plugins.cl.PluginClassLoader;
 import com.intellij.openapi.components.*;
+import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.util.Condition;
 import com.intellij.util.containers.ContainerUtil;
+import com.intellij.util.lang.UrlClassLoader;
+import org.jetbrains.annotations.NonNls;
 import org.jetbrains.annotations.NotNull;
 
 import javax.annotation.processing.Processor;
 import java.io.File;
+import java.io.IOException;
+import java.lang.reflect.Modifier;
+import java.net.URL;
 import java.util.*;
+import java.util.jar.JarEntry;
+import java.util.jar.JarFile;
 
 @State(
     name = "CheckerFrameworkPluginSettings",
@@ -23,12 +32,13 @@ public class CheckerFrameworkSettings implements PersistentStateComponent<Checke
 
     public static final String CHECKERS_BASE_CLASS = "org.checkerframework.framework.source.SourceChecker";
     public static final String CHECKERS_PACKAGE = "org.checkerframework.checker";
+    private static final Logger LOG = Logger.getInstance(CheckerFrameworkSettings.class);
 
     private @NotNull State myState = new State();
     private final @NotNull List<String> myCheckers = new ArrayList<String>();
     private final @NotNull List<Class<? extends Processor>> myCheckerClasses = new ArrayList<Class<? extends Processor>>();
-    //private final @NotNull List<Class<? extends Processor>> myEnabledCheckerClasses = new ArrayList<Class<? extends Processor>>();
     private boolean needReload = true;
+    private ClassLoader myClassLoader;
 
     @SuppressWarnings("UnusedDeclaration")
     public CheckerFrameworkSettings() {
@@ -48,9 +58,9 @@ public class CheckerFrameworkSettings implements PersistentStateComponent<Checke
         myState.myPathToCheckerJar = pathToCheckerJar;
     }
 
-
     @NotNull
     public Set<String> getBuiltInCheckers() {
+        if (needReload) loadClasses();
         return myState.myBuiltInCheckers;
     }
 
@@ -61,17 +71,13 @@ public class CheckerFrameworkSettings implements PersistentStateComponent<Checke
 
     @NotNull
     public List<String> getCheckers() {
-        if (needReload) {
-            loadClasses();
-        }
+        if (needReload) loadClasses();
         return myCheckers;
     }
 
     @NotNull
     public Set<Class<? extends Processor>> getEnabledCheckerClasses() {
-        if (needReload) {
-            loadClasses();
-        }
+        if (needReload) loadClasses();
         final Set<Class<? extends Processor>> result = new HashSet<Class<? extends Processor>>(myCheckerClasses);
         ContainerUtil.retainAll(result, new Condition<Class<? extends Processor>>() {
             @Override
@@ -100,9 +106,7 @@ public class CheckerFrameworkSettings implements PersistentStateComponent<Checke
 
     @Override
     public void loadState(final State state) {
-        if (!needReload) {
-            needReload = !state.myPathToCheckerJar.equals(state.myPathToCheckerJar);
-        }
+        needReload = needReload || !state.myPathToCheckerJar.equals(state.myPathToCheckerJar);
         myState = new State(state);
     }
 
@@ -123,23 +127,68 @@ public class CheckerFrameworkSettings implements PersistentStateComponent<Checke
         return myState.hashCode();
     }
 
+    public ClassLoader getClassLoader() {
+        if (needReload) loadClasses();
+        return myClassLoader;
+    }
+
     private void loadClasses() {
         myCheckerClasses.clear();
-        myCheckerClasses.addAll(
-            ClassScanner.findChildren(
-                new File(myState.myPathToCheckerJar),
-                CHECKERS_BASE_CLASS, CHECKERS_PACKAGE,
-                this.getClass().getClassLoader()
-            )
-        );
-
         myState.myBuiltInCheckers.clear();
-        for (final Class<? extends Processor> clazz : myCheckerClasses) {
-            myState.myBuiltInCheckers.add(clazz.getCanonicalName());
+        final PluginClassLoader currentPluginClassLoader = (PluginClassLoader)this.getClass().getClassLoader();
+        JarFile jar = null;
+        try {
+            final URL jarUrl = new File(myState.myPathToCheckerJar).toURI().toURL();
+
+            final UrlClassLoader jarClassLoader = new PluginClassLoader(new ArrayList<URL>(currentPluginClassLoader.getUrls()) {{
+                add(jarUrl);
+            }}, new ClassLoader[]{currentPluginClassLoader}, currentPluginClassLoader.getPluginId(), "lol", null);
+            final Class<? extends Processor> superclazz = jarClassLoader.loadClass(CHECKERS_BASE_CLASS).asSubclass(Processor.class);
+
+
+            //noinspection IOResourceOpenedButNotSafelyClosed
+            jar = new JarFile(jarUrl.getFile());
+            for (final JarEntry entry : Collections.list(jar.entries())) {
+                if (!entry.isDirectory() && entry.toString().endsWith(".class")) {
+                    try {
+                        @NonNls final String clazzName = entry
+                            .toString()
+                            .replaceAll(File.separator, ".")
+                            .replace(".class", "");
+
+                        final String caseIgnoredClazzName = clazzName.toLowerCase();
+                        if (!caseIgnoredClazzName.startsWith(CHECKERS_PACKAGE)
+                            || caseIgnoredClazzName.contains("sub")
+                            || caseIgnoredClazzName.contains("abstract")
+                            || caseIgnoredClazzName.contains("adapter")) {
+                            continue;
+                        }
+                        final Class<? extends Processor> clazz = jarClassLoader.loadClass(clazzName).asSubclass(superclazz);
+                        if (!Modifier.isAbstract(clazz.getModifiers()) && !clazz.isAnonymousClass()) {
+                            myCheckerClasses.add(clazz);
+                            myState.myBuiltInCheckers.add(clazz.getCanonicalName());
+                        }
+                    } catch (ClassNotFoundException e) {
+                        LOG.error(e);
+                    } catch (ClassCastException e) {
+                        LOG.debug(e);
+                    }
+                }
+            }
+            myClassLoader = jarClassLoader;
+        } catch (IOException e) {
+            LOG.debug(e);
+        } catch (ClassNotFoundException e) {
+            LOG.debug(e);
+        } finally {
+            try {
+                if (jar != null) jar.close();
+            } catch (IOException e) {
+                LOG.error(e);
+            }
         }
 
         refreshCheckers();
-
         needReload = false;
     }
 

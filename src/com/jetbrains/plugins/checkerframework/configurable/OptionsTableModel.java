@@ -1,6 +1,7 @@
 package com.jetbrains.plugins.checkerframework.configurable;
 
 import com.intellij.util.ui.EditableModel;
+import com.jetbrains.plugins.checkerframework.service.CheckerFrameworkSettings;
 import org.jetbrains.annotations.NotNull;
 
 import javax.swing.table.AbstractTableModel;
