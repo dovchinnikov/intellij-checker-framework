@@ -43,7 +43,7 @@ public class AwesomeInspection extends AbstractBaseJavaLocalInspectionTool {
                 if (start >= 0 && end >= start) {
                     problemKey = messageText.substring(start + 1, end);
                 } else {
-                    LOG.warn("problem key not found");
+                    LOG.warn("problem key not found:\n" + diagnostic);
                     continue;
                 }
             }
