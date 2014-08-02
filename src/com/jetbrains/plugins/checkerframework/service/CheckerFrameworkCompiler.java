@@ -6,15 +6,12 @@ import com.intellij.openapi.project.Project;
 import com.intellij.psi.PsiFile;
 import com.jetbrains.plugins.checkerframework.util.VirtualJavaFileObject;
 import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
 import org.jetbrains.jps.cmdline.ClasspathBootstrap;
 
 import javax.annotation.processing.Processor;
 import javax.tools.*;
 import javax.tools.JavaCompiler.*;
 import java.io.File;
-import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Method;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
@@ -24,7 +21,6 @@ public class CheckerFrameworkCompiler {
 
     private static final Logger LOG = Logger.getInstance(CheckerFrameworkCompiler.class);
     private static final JavaCompiler JAVA_COMPILER;
-    private static final String AGGREGATE_PROCESSOR_FQN = "org.checkerframework.framework.source.AggregateCheckerEx";
 
     static {
         try {
@@ -51,12 +47,16 @@ public class CheckerFrameworkCompiler {
         mySettings = CheckerFrameworkSettings.getInstance(project);
     }
 
+    public static CheckerFrameworkCompiler getInstance(@NotNull Project project) {
+        return ServiceManager.getService(project, CheckerFrameworkCompiler.class);
+    }
+
     @NotNull
     public List<Diagnostic<? extends JavaFileObject>> getMessages(@NotNull PsiFile file) {
-        if (mySettings.getEnabledCheckerClasses().isEmpty()) {
+        if (mySettings.getEnabledCheckers().isEmpty()) {
             return Collections.emptyList();
         }
-        final Processor processor = createAggregateChecker();
+        final Processor processor = mySettings.createAggregateChecker();
         if (processor == null) {
             return Collections.emptyList();
         }
@@ -84,27 +84,5 @@ public class CheckerFrameworkCompiler {
             + File.pathSeparator
             + ClasspathBootstrap.getResourcePath(JAVA_COMPILER.getClass())
         );
-    }
-
-    @Nullable
-    private Processor createAggregateChecker() {
-        try {
-            final Class<?> clazz = mySettings.getClassLoader().loadClass(AGGREGATE_PROCESSOR_FQN);
-            final Method m = clazz.getDeclaredMethod("create", Collection.class);
-            return (Processor)m.invoke(null, mySettings.getEnabledCheckerClasses());
-        } catch (ClassNotFoundException e) {
-            LOG.error(e);
-        } catch (NoSuchMethodException e) {
-            LOG.error(e);
-        } catch (InvocationTargetException e) {
-            LOG.error(e);
-        } catch (IllegalAccessException e) {
-            LOG.error(e);
-        }
-        return null;
-    }
-
-    public static CheckerFrameworkCompiler getInstance(@NotNull Project project) {
-        return ServiceManager.getService(project, CheckerFrameworkCompiler.class);
     }
 }

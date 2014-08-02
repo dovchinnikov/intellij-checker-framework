@@ -9,10 +9,13 @@ import com.intellij.util.containers.ContainerUtil;
 import com.intellij.util.lang.UrlClassLoader;
 import org.jetbrains.annotations.NonNls;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import javax.annotation.processing.Processor;
 import java.io.File;
 import java.io.IOException;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.net.URL;
 import java.util.*;
@@ -30,15 +33,15 @@ import java.util.jar.JarFile;
 )
 public class CheckerFrameworkSettings implements PersistentStateComponent<CheckerFrameworkSettings.State> {
 
-    public static final String CHECKERS_BASE_CLASS = "org.checkerframework.framework.source.SourceChecker";
+    public static final String CHECKERS_BASE_CLASS_FQN = "org.checkerframework.framework.source.SourceChecker";
     public static final String CHECKERS_PACKAGE = "org.checkerframework.checker";
+    public static final String AGGREGATE_PROCESSOR_FQN = "org.checkerframework.framework.source.AggregateCheckerEx";
     private static final Logger LOG = Logger.getInstance(CheckerFrameworkSettings.class);
-
-    private @NotNull State myState = new State();
     private final @NotNull List<String> myCheckers = new ArrayList<String>();
     private final @NotNull List<Class<? extends Processor>> myCheckerClasses = new ArrayList<Class<? extends Processor>>();
+    private @NotNull State myState = new State();
     private boolean needReload = true;
-    private ClassLoader myClassLoader;
+    private Method myAggregateProcessorFactoryMethod;
 
     @SuppressWarnings("UnusedDeclaration")
     public CheckerFrameworkSettings() {
@@ -46,6 +49,10 @@ public class CheckerFrameworkSettings implements PersistentStateComponent<Checke
 
     public CheckerFrameworkSettings(@NotNull CheckerFrameworkSettings original) {
         this.loadState(original.getState());
+    }
+
+    public static CheckerFrameworkSettings getInstance(final Project project) {
+        return ServiceManager.getService(project, CheckerFrameworkSettings.class);
     }
 
     @NotNull
@@ -127,9 +134,16 @@ public class CheckerFrameworkSettings implements PersistentStateComponent<Checke
         return myState.hashCode();
     }
 
-    public ClassLoader getClassLoader() {
-        if (needReload) loadClasses();
-        return myClassLoader;
+    @Nullable
+    public Processor createAggregateChecker() {
+        try {
+            return (Processor)myAggregateProcessorFactoryMethod.invoke(null, getEnabledCheckerClasses());
+        } catch (InvocationTargetException e) {
+            LOG.error(e);
+        } catch (IllegalAccessException e) {
+            LOG.error(e);
+        }
+        return null;
     }
 
     private void loadClasses() {
@@ -139,12 +153,14 @@ public class CheckerFrameworkSettings implements PersistentStateComponent<Checke
         JarFile jar = null;
         try {
             final URL jarUrl = new File(myState.myPathToCheckerJar).toURI().toURL();
-
             final UrlClassLoader jarClassLoader = new PluginClassLoader(new ArrayList<URL>(currentPluginClassLoader.getUrls()) {{
                 add(jarUrl);
             }}, new ClassLoader[]{currentPluginClassLoader}, currentPluginClassLoader.getPluginId(), "lol", null);
-            final Class<? extends Processor> superclazz = jarClassLoader.loadClass(CHECKERS_BASE_CLASS).asSubclass(Processor.class);
-
+            final Class<? extends Processor> superclazz =
+                jarClassLoader.loadClass(CHECKERS_BASE_CLASS_FQN).asSubclass(Processor.class);
+            final Class<? extends Processor> aggregateProcessorClass =
+                jarClassLoader.loadClass(AGGREGATE_PROCESSOR_FQN).asSubclass(Processor.class);
+            myAggregateProcessorFactoryMethod = aggregateProcessorClass.getDeclaredMethod("create", Collection.class);
 
             //noinspection IOResourceOpenedButNotSafelyClosed
             jar = new JarFile(jarUrl.getFile());
@@ -175,10 +191,11 @@ public class CheckerFrameworkSettings implements PersistentStateComponent<Checke
                     }
                 }
             }
-            myClassLoader = jarClassLoader;
         } catch (IOException e) {
             LOG.debug(e);
         } catch (ClassNotFoundException e) {
+            LOG.debug(e);
+        } catch (NoSuchMethodException e) {
             LOG.debug(e);
         } finally {
             try {
@@ -196,10 +213,6 @@ public class CheckerFrameworkSettings implements PersistentStateComponent<Checke
         myCheckers.clear();
         myCheckers.addAll(myState.myBuiltInCheckers);
         myCheckers.addAll(myState.myCustomCheckers);
-    }
-
-    public static CheckerFrameworkSettings getInstance(final Project project) {
-        return ServiceManager.getService(project, CheckerFrameworkSettings.class);
     }
 
     public static class State {
@@ -223,6 +236,10 @@ public class CheckerFrameworkSettings implements PersistentStateComponent<Checke
             myCustomCheckers = new HashSet<String>(state.myCustomCheckers);
             myEnabledCheckers = new HashSet<String>(state.myEnabledCheckers);
             myOptions = new ArrayList<String>(state.myOptions);
+        }
+
+        private static <T> boolean collectionEquals(@NotNull Collection<T> a, @NotNull Collection<T> b) {
+            return a.containsAll(b) && b.containsAll(a);
         }
 
         @Override
@@ -259,10 +276,6 @@ public class CheckerFrameworkSettings implements PersistentStateComponent<Checke
             result = 31 * result + myCustomCheckers.hashCode();
             result = 31 * result + myEnabledCheckers.hashCode();
             return result;
-        }
-
-        private static <T> boolean collectionEquals(@NotNull Collection<T> a, @NotNull Collection<T> b) {
-            return a.containsAll(b) && b.containsAll(a);
         }
     }
 }

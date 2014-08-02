@@ -170,7 +170,7 @@ public class CheckerFrameworkConfigurableUI {
         public AddCustomCheckerButton() {
             super("Add custom checker", AllIcons.ToolbarDecorator.AddClass);
             myProcessorInterface = JavaPsiFacade.getInstance(myProject).findClass(
-                CheckerFrameworkSettings.CHECKERS_BASE_CLASS,
+                CheckerFrameworkSettings.CHECKERS_BASE_CLASS_FQN,
                 GlobalSearchScope.allScope(myProject)
             );
             setEnabled(myProcessorInterface != null);
