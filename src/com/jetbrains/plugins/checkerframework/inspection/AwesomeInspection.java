@@ -32,7 +32,7 @@ public class AwesomeInspection extends AbstractBaseJavaLocalInspectionTool {
         final Collection<ProblemDescriptor> problems = new ArrayList<ProblemDescriptor>();
         for (final Diagnostic diagnostic : messages) {
             if (!diagnostic.getCode().equals(PROC_CODE)) {
-                LOG.warn("Non processor diagnostic:\n" + diagnostic);
+                LOG.debug("Non processor diagnostic:\n" + diagnostic);
                 continue;
             }
             final String messageText = diagnostic.getMessage(Locale.getDefault());

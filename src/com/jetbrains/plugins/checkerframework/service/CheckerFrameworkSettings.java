@@ -158,8 +158,8 @@ public class CheckerFrameworkSettings implements PersistentStateComponent<Checke
             }}, new ClassLoader[]{currentPluginClassLoader}, currentPluginClassLoader.getPluginId(), "lol", null);
             final Class<? extends Processor> superclazz =
                 jarClassLoader.loadClass(CHECKERS_BASE_CLASS_FQN).asSubclass(Processor.class);
-            final Class<? extends Processor> aggregateProcessorClass =
-                jarClassLoader.loadClass(AGGREGATE_PROCESSOR_FQN).asSubclass(Processor.class);
+            final Class<?> aggregateProcessorClass =
+                jarClassLoader.loadClass(AGGREGATE_PROCESSOR_FQN);
             myAggregateProcessorFactoryMethod = aggregateProcessorClass.getDeclaredMethod("create", Collection.class);
 
             //noinspection IOResourceOpenedButNotSafelyClosed
