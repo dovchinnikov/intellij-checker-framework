@@ -136,6 +136,7 @@ public class CheckerFrameworkSettings implements PersistentStateComponent<Checke
 
     @Nullable
     public Processor createAggregateChecker() {
+        if (needReload) loadClasses();
         try {
             return (Processor)myAggregateProcessorFactoryMethod.invoke(null, getEnabledCheckerClasses());
         } catch (InvocationTargetException e) {
