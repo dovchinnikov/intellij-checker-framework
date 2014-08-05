@@ -2,8 +2,12 @@ package com.jetbrains.plugins.checkerframework.inspection;
 
 import com.intellij.codeInspection.*;
 import com.intellij.openapi.diagnostic.Logger;
-import com.intellij.psi.PsiElement;
-import com.intellij.psi.PsiFile;
+import com.intellij.openapi.project.Project;
+import com.intellij.psi.*;
+import com.intellij.psi.search.GlobalSearchScope;
+import com.intellij.psi.util.PsiTreeUtil;
+import com.jetbrains.plugins.checkerframework.inspection.fix.AddTypeCastFix;
+import com.jetbrains.plugins.checkerframework.inspection.fix.SurroundWithIfRegexFix;
 import com.jetbrains.plugins.checkerframework.service.CheckerFrameworkCompiler;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -67,7 +71,7 @@ public class AwesomeInspection extends AbstractBaseJavaLocalInspectionTool {
                 messageText,
                 ProblemHighlightType.GENERIC_ERROR,
                 isOnTheFly,
-                buildFixes(problemKey, startElement, endElement)
+                buildFixes(file.getProject(), problemKey, startElement, endElement)
             );
             problems.add(problemDescriptor);
         }
@@ -76,17 +80,26 @@ public class AwesomeInspection extends AbstractBaseJavaLocalInspectionTool {
 
     @SuppressWarnings("UnusedParameters")
     @Nullable
-    LocalQuickFix[] buildFixes(final @NotNull String problemKey,
+    LocalQuickFix[] buildFixes(final @NotNull Project project,
+                               final @NotNull String problemKey,
                                final @NotNull PsiElement startElement,
                                final @NotNull PsiElement endElement) {
-        return null;
-        /*
-        List<LocalQuickFix> fixes = new ArrayList<LocalQuickFix>();
+
+        final List<LocalQuickFix> fixes = new ArrayList<LocalQuickFix>();
         if (problemKey.equals("assignment.type.incompatible")) {
             final PsiElement parent = PsiTreeUtil.findCommonParent(startElement, endElement);
-            final PsiExpression enclosingExpression = PsiTreeUtil.getNonStrictParentOfType(parent,
-                                                                                           PsiExpression.class);
+            final PsiExpression enclosingExpression = PsiTreeUtil.getNonStrictParentOfType(
+                parent,
+                PsiExpression.class
+            );
             if (enclosingExpression != null) {
+                final PsiClassType stringType = PsiType.getJavaLangString(
+                    PsiManager.getInstance(project),
+                    GlobalSearchScope.allScope(project)
+                );
+                if (stringType.equals(enclosingExpression.getType())) {
+                    fixes.add(new SurroundWithIfRegexFix(enclosingExpression));
+                }
                 final PsiVariable variable = PsiTreeUtil.getNonStrictParentOfType(enclosingExpression, PsiVariable.class);
                 if (variable != null) {
                     fixes.add(new AddTypeCastFix(variable.getType(), enclosingExpression));
@@ -96,6 +109,5 @@ public class AwesomeInspection extends AbstractBaseJavaLocalInspectionTool {
             return null;
         }
         return fixes.toArray(new LocalQuickFix[fixes.size()]);
-        */
     }
 }
