@@ -35,7 +35,7 @@ public class CheckerFrameworkSettings implements PersistentStateComponent<Checke
 
     public static final String CHECKERS_BASE_CLASS_FQN = "org.checkerframework.framework.source.SourceChecker";
     public static final String CHECKERS_PACKAGE = "org.checkerframework.checker";
-    public static final String AGGREGATE_PROCESSOR_FQN = "org.checkerframework.framework.source.AggregateCheckerEx";
+    public static final String AGGREGATE_PROCESSOR_FQN = "com.jetbrains.plugins.checkerframework.util.AggregateCheckerEx";
     private static final Logger LOG = Logger.getInstance(CheckerFrameworkSettings.class);
     private final @NotNull List<String> myCheckers = new ArrayList<String>();
     private final @NotNull List<Class<? extends Processor>> myCheckerClasses = new ArrayList<Class<? extends Processor>>();
@@ -251,23 +251,12 @@ public class CheckerFrameworkSettings implements PersistentStateComponent<Checke
             if (o == null || getClass() != o.getClass()) {
                 return false;
             }
-            State state = (State)o;
-            if (!myPathToCheckerJar.equals(state.myPathToCheckerJar)) {
-                return false;
-            }
-            if (!collectionEquals(myBuiltInCheckers, state.myBuiltInCheckers)) {
-                return false;
-            }
-            if (!collectionEquals(myCustomCheckers, state.myCustomCheckers)) {
-                return false;
-            }
-            if (!collectionEquals(myEnabledCheckers, state.myEnabledCheckers)) {
-                return false;
-            }
-            if (!collectionEquals(myOptions, state.myOptions)) {
-                return false;
-            }
-            return true;
+            State state = (State) o;
+            return myPathToCheckerJar.equals(state.myPathToCheckerJar)
+                    && collectionEquals(myBuiltInCheckers, state.myBuiltInCheckers)
+                    && collectionEquals(myCustomCheckers, state.myCustomCheckers)
+                    && collectionEquals(myEnabledCheckers, state.myEnabledCheckers)
+                    && collectionEquals(myOptions, state.myOptions);
         }
 
         @Override

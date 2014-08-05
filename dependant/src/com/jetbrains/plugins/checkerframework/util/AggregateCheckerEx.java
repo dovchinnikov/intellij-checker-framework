@@ -1,9 +1,11 @@
-package org.checkerframework.framework.source;
+package com.jetbrains.plugins.checkerframework.util;
 
-import javax.annotation.processing.Processor;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.Set;
+import javax.annotation.processing.Processor;
+import org.checkerframework.framework.source.AggregateChecker;
+import org.checkerframework.framework.source.SourceChecker;
 
 @SuppressWarnings("UnusedDeclaration")
 public class AggregateCheckerEx {
@@ -19,13 +21,13 @@ public class AggregateCheckerEx {
                 return myClasses;
             }
 
-            @Override
-            public void initChecker() {
-                for (SourceChecker checker : checkers) {
-                    checker.init(processingEnv);
-                }
-                super.initChecker();
-            }
+//            @Override
+//            public void initChecker() {
+//                for (SourceChecker checker : checkers) {
+//                    checker.init(processingEnv);
+//                }
+//                super.initChecker();
+//            }
         };
     }
 }
