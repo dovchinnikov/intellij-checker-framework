@@ -78,7 +78,7 @@ public class CheckerFrameworkCompiler {
     private Collection<String> createCompileOptions() {
         return Arrays.asList(
             "-proc:only",
-            "-AprintErrorStack", "-AprintAllQualifiers",
+            "-Adetailedmsgtext",
             "-classpath",
             mySettings.getPathToCheckerJar()
             + File.pathSeparator

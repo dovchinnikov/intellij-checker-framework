@@ -42,8 +42,8 @@ public class AwesomeInspection extends AbstractBaseJavaLocalInspectionTool {
             final String messageText = diagnostic.getMessage(Locale.getDefault());
             final @NotNull String problemKey;
             {
-                int start = messageText.indexOf('[');
-                int end = messageText.indexOf(']');
+                int start = messageText.indexOf('(');
+                int end = messageText.indexOf(')');
                 if (start >= 0 && end >= start) {
                     problemKey = messageText.substring(start + 1, end);
                 } else {
