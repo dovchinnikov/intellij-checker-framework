@@ -1,6 +1,6 @@
 package com.jetbrains.plugins.checkerframework.inspection;
 
-import com.intellij.codeInspection.AbstractBaseJavaLocalInspectionTool;
+import com.intellij.codeInspection.BaseJavaBatchLocalInspectionTool;
 import com.intellij.codeInspection.InspectionManager;
 import com.intellij.codeInspection.ProblemDescriptor;
 import com.intellij.openapi.project.Project;
@@ -15,7 +15,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 
-public class AwesomeInspection extends AbstractBaseJavaLocalInspectionTool {
+public class AwesomeInspection extends BaseJavaBatchLocalInspectionTool {
 
     @Nullable
     @Override
