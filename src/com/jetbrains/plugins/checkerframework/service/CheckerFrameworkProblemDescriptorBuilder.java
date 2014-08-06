@@ -7,24 +7,41 @@ import com.intellij.codeInspection.ProblemHighlightType;
 import com.intellij.openapi.components.ServiceManager;
 import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.project.Project;
+import com.intellij.openapi.util.text.StringUtil;
 import com.intellij.psi.*;
 import com.intellij.psi.search.GlobalSearchScope;
 import com.intellij.psi.util.PsiTreeUtil;
+import com.intellij.xml.util.XmlUtil;
 import com.jetbrains.plugins.checkerframework.inspection.fix.AddTypeCastFix;
 import com.jetbrains.plugins.checkerframework.inspection.fix.SurroundWithIfRegexFix;
+import com.jetbrains.plugins.checkerframework.util.CheckerFrameworkMessages;
+import org.intellij.lang.annotations.Language;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import javax.tools.*;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 public class CheckerFrameworkProblemDescriptorBuilder {
 
-    private static final Logger LOG = Logger.getInstance(CheckerFrameworkProblemDescriptorBuilder.class);
+    private static final                     Logger  LOG         = Logger.getInstance(CheckerFrameworkProblemDescriptorBuilder.class);
+    private static final @Language("RegExp") String  DELIMITER   = "\\$\\$";
+    private static final @Language("RegExp") String  FQN         = "[@<>\\(\\)\\.\\w\\s:]+";
+    private static final                     Pattern MSG_PATTERN = Pattern.compile(
+        "^\\(([\\w\\.]+)\\)\\s" + DELIMITER
+        + "\\s(\\d+)\\s" + DELIMITER
+        + "(" + FQN + ")" + DELIMITER
+        + "(" + FQN + ")" + DELIMITER
+        + "\\s\\(\\s?(\\d+)\\s?,\\s?(\\d+)\\s?\\)\\s" + DELIMITER + "([\\w\\s]+)\\."
+        + ".*$",
+        Pattern.DOTALL
+    );
 
     private final InspectionManager myInspectionManager;
-    private final PsiClassType myStringType;
+    private final PsiClassType      myStringType;
 
     public CheckerFrameworkProblemDescriptorBuilder(final Project project) {
         myStringType = PsiType.getJavaLangString(
@@ -41,26 +58,26 @@ public class CheckerFrameworkProblemDescriptorBuilder {
         return buildProblemDescriptor(
             file,
             diagnostic.getMessage(null),
-            (int)diagnostic.getStartPosition(),
-            (int)diagnostic.getEndPosition(),
             isOnTheFly
         );
     }
 
     @Nullable
     public ProblemDescriptor buildProblemDescriptor(final @NotNull PsiFile file, final @NotNull String diagnosticString,
-                                                    int startPosition, int endPosition, boolean isOnTheFly) {
-        final @NotNull String problemKey;
-        {
-            int start = diagnosticString.indexOf('(');
-            int end = diagnosticString.indexOf(')');
-            if (start >= 0 && end >= start) {
-                problemKey = diagnosticString.substring(start + 1, end);
-            } else {
-                LOG.debug("problem key not found:\n" + diagnosticString);
-                return null;
-            }
+                                                    boolean isOnTheFly) {
+        final Matcher matcher = MSG_PATTERN.matcher(diagnosticString);
+        if (!matcher.matches()) {
+            LOG.warn("Cannot parse:\n" + diagnosticString);
+            return null;
         }
+        final @NotNull String problemKey = matcher.group(1);
+        final @SuppressWarnings("UnusedDeclaration") int magicNumber = Integer.parseInt(matcher.group(2));
+        final String foundType = XmlUtil.escape(matcher.group(3).trim());
+        final String requiredType = XmlUtil.escape(matcher.group(4).trim());
+        final int startPosition = Integer.parseInt(matcher.group(5));
+        final int endPosition = Integer.parseInt(matcher.group(6));
+        final String description = StringUtil.capitalize(matcher.group(7).trim());
+
         final @Nullable PsiElement startElement = file.findElementAt(startPosition);
         if (startElement == null) {
             LOG.warn("Cannot find start element:\n" + diagnosticString);
@@ -75,10 +92,11 @@ public class CheckerFrameworkProblemDescriptorBuilder {
             LOG.warn("Wrong start & end offset: \n" + diagnosticString);
             return null;
         }
+        final String tooltip = CheckerFrameworkMessages.message("incompatible.types.html.tooltip", description, foundType, requiredType);
         return myInspectionManager.createProblemDescriptor(
             startElement,
             endElement,
-            diagnosticString,
+            tooltip,
             ProblemHighlightType.GENERIC_ERROR,
             isOnTheFly,
             buildFixes(problemKey, startElement, endElement)
