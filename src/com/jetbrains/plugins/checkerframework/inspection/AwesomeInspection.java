@@ -25,7 +25,6 @@ import java.util.Locale;
 public class AwesomeInspection extends AbstractBaseJavaLocalInspectionTool {
 
     private static final Logger LOG = Logger.getInstance(AwesomeInspection.class);
-    private static final String PROC_CODE = "compiler.err.proc.messager";
 
     @Nullable
     @Override
@@ -35,10 +34,6 @@ public class AwesomeInspection extends AbstractBaseJavaLocalInspectionTool {
             .getMessages(file);
         final Collection<ProblemDescriptor> problems = new ArrayList<ProblemDescriptor>();
         for (final Diagnostic diagnostic : messages) {
-            if (!diagnostic.getCode().equals(PROC_CODE)) {
-                LOG.debug("Non processor diagnostic:\n" + diagnostic);
-                continue;
-            }
             final String messageText = diagnostic.getMessage(Locale.getDefault());
             final @NotNull String problemKey;
             {

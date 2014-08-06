@@ -4,6 +4,7 @@ import com.intellij.openapi.components.ServiceManager;
 import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.project.Project;
 import com.intellij.psi.PsiFile;
+import com.jetbrains.plugins.checkerframework.util.FilteringDiagnosticCollector;
 import com.jetbrains.plugins.checkerframework.util.VirtualJavaFileObject;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.jps.cmdline.ClasspathBootstrap;
@@ -60,7 +61,7 @@ public class CheckerFrameworkCompiler {
         if (processor == null) {
             return Collections.emptyList();
         }
-        final DiagnosticCollector<JavaFileObject> collector = new DiagnosticCollector<JavaFileObject>();
+        final FilteringDiagnosticCollector collector = new FilteringDiagnosticCollector();
         final CompilationTask task = JAVA_COMPILER.getTask(
             null,
             FILE_MANAGER,
