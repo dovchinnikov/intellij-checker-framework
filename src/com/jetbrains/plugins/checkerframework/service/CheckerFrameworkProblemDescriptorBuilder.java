@@ -9,11 +9,13 @@ import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.util.text.StringUtil;
 import com.intellij.psi.*;
+import com.intellij.psi.impl.JavaPsiFacadeEx;
 import com.intellij.psi.search.GlobalSearchScope;
 import com.intellij.psi.util.PsiTreeUtil;
 import com.intellij.xml.util.XmlUtil;
 import com.jetbrains.plugins.checkerframework.inspection.fix.AddTypeCastFix;
 import com.jetbrains.plugins.checkerframework.inspection.fix.SurroundWithIfRegexFix;
+import com.jetbrains.plugins.checkerframework.inspection.fix.WrapWithAsRegexFix;
 import com.jetbrains.plugins.checkerframework.util.CheckerFrameworkMessages;
 import org.intellij.lang.annotations.Language;
 import org.jetbrains.annotations.NotNull;
@@ -42,12 +44,15 @@ public class CheckerFrameworkProblemDescriptorBuilder {
 
     private final InspectionManager myInspectionManager;
     private final PsiClassType      myStringType;
+    private final PsiClass          myRegexUtilClass;
 
     public CheckerFrameworkProblemDescriptorBuilder(final Project project) {
+        GlobalSearchScope searchScope = GlobalSearchScope.allScope(project);
         myStringType = PsiType.getJavaLangString(
             PsiManager.getInstance(project),
-            GlobalSearchScope.allScope(project)
+            searchScope
         );
+        myRegexUtilClass = JavaPsiFacadeEx.getInstanceEx(project).findClass("org.checkerframework.checker.regex.RegexUtil");
         myInspectionManager = InspectionManager.getInstance(project);
     }
 
@@ -108,12 +113,12 @@ public class CheckerFrameworkProblemDescriptorBuilder {
                                        final @NotNull PsiElement startElement,
                                        final @NotNull PsiElement endElement) {
         final List<LocalQuickFix> fixes = new ArrayList<LocalQuickFix>();
+        final PsiElement parent = PsiTreeUtil.findCommonParent(startElement, endElement);
+        final PsiExpression enclosingExpression = PsiTreeUtil.getNonStrictParentOfType(
+            parent,
+            PsiExpression.class
+        );
         if (problemKey.equals("assignment.type.incompatible")) {
-            final PsiElement parent = PsiTreeUtil.findCommonParent(startElement, endElement);
-            final PsiExpression enclosingExpression = PsiTreeUtil.getNonStrictParentOfType(
-                parent,
-                PsiExpression.class
-            );
             if (enclosingExpression != null) {
                 if (myStringType.equals(enclosingExpression.getType())) {
                     fixes.add(new SurroundWithIfRegexFix(enclosingExpression));
@@ -123,6 +128,8 @@ public class CheckerFrameworkProblemDescriptorBuilder {
                     fixes.add(new AddTypeCastFix(variable.getType(), enclosingExpression));
                 }
             }
+        } else if (problemKey.equals("argument.type.incompatible")) {
+            fixes.add(new WrapWithAsRegexFix(myRegexUtilClass));
         } else {
             return null;
         }
