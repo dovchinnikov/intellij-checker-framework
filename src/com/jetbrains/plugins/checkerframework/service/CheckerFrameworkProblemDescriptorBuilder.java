@@ -13,10 +13,10 @@ import com.intellij.psi.impl.JavaPsiFacadeEx;
 import com.intellij.psi.search.GlobalSearchScope;
 import com.intellij.psi.util.PsiTreeUtil;
 import com.intellij.xml.util.XmlUtil;
-import com.jetbrains.plugins.checkerframework.inspection.fix.AddTypeCastFix;
 import com.jetbrains.plugins.checkerframework.inspection.fix.SurroundWithIfRegexFix;
 import com.jetbrains.plugins.checkerframework.inspection.fix.WrapWithAsRegexFix;
 import com.jetbrains.plugins.checkerframework.util.CheckerFrameworkMessages;
+import com.jetbrains.plugins.checkerframework.util.MultiMapEx;
 import org.intellij.lang.annotations.Language;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -42,6 +42,18 @@ public class CheckerFrameworkProblemDescriptorBuilder {
         Pattern.DOTALL
     );
 
+    private static final MultiMapEx PROBLEM_KEY_TO_CLASS;
+
+    static {
+        PROBLEM_KEY_TO_CLASS = new MultiMapEx();
+        PROBLEM_KEY_TO_CLASS.putValue("assignment.type.incompatible", PsiStatement.class);
+        PROBLEM_KEY_TO_CLASS.putValue("assignment.type.incompatible", PsiLocalVariable.class);
+        PROBLEM_KEY_TO_CLASS.putValue("argument.type.incompatible", PsiExpression.class);
+        PROBLEM_KEY_TO_CLASS.putValue("compound.assignment.type.incompatible", PsiStatement.class);
+        PROBLEM_KEY_TO_CLASS.putValue("enhancedfor.type.incompatible", PsiExpression.class);
+        PROBLEM_KEY_TO_CLASS.putValue("return.type.incompatible", PsiStatement.class);
+    }
+
     private final InspectionManager myInspectionManager;
     private final PsiClassType      myStringType;
     private final PsiClass          myRegexUtilClass;
@@ -52,7 +64,7 @@ public class CheckerFrameworkProblemDescriptorBuilder {
             PsiManager.getInstance(project),
             searchScope
         );
-        myRegexUtilClass = JavaPsiFacadeEx.getInstanceEx(project).findClass("org.checkerframework.checker.regex.RegexUtil");
+        myRegexUtilClass = JavaPsiFacadeEx.getInstanceEx(project).findClass(Stuff.REGEX_UTIL_FQN);
         myInspectionManager = InspectionManager.getInstance(project);
     }
 
@@ -93,47 +105,44 @@ public class CheckerFrameworkProblemDescriptorBuilder {
             LOG.warn("Cannot find end element:\n" + diagnosticString);
             return null;
         }
-        if (startElement.getTextRange().getStartOffset() >= endElement.getTextRange().getEndOffset()) {
-            LOG.warn("Wrong start & end offset: \n" + diagnosticString);
-            return null;
-        }
-        final String tooltip = CheckerFrameworkMessages.message("incompatible.types.html.tooltip", description, requiredType, foundType);
-        return myInspectionManager.createProblemDescriptor(
-            startElement,
-            endElement,
-            tooltip,
-            ProblemHighlightType.GENERIC_ERROR,
-            isOnTheFly,
-            buildFixes(problemKey, startElement, endElement)
-        );
-    }
-
-    @Nullable
-    private LocalQuickFix[] buildFixes(final @NotNull String problemKey,
-                                       final @NotNull PsiElement startElement,
-                                       final @NotNull PsiElement endElement) {
+        final @NotNull PsiElement problemElement;
         final List<LocalQuickFix> fixes = new ArrayList<LocalQuickFix>();
-        final PsiElement parent = PsiTreeUtil.findCommonParent(startElement, endElement);
-        final PsiExpression enclosingExpression = PsiTreeUtil.getNonStrictParentOfType(
-            parent,
-            PsiExpression.class
-        );
-        if (problemKey.equals("assignment.type.incompatible")) {
-            if (enclosingExpression != null) {
-                if (myStringType.equals(enclosingExpression.getType())) {
+        {
+            final PsiElement parent = PsiTreeUtil.findCommonParent(startElement, endElement);
+            {
+                final PsiElement element = PsiTreeUtil.getNonStrictParentOfType(
+                    parent,
+                    PROBLEM_KEY_TO_CLASS.containsKey(problemKey)
+                    ? PROBLEM_KEY_TO_CLASS.asArray(problemKey)
+                    : new Class[]{PsiElement.class}
+                );
+                assert element != null : "Cannot find problem element for '" + problemKey + "' key.";
+                problemElement = element;
+            }
+            final PsiExpression enclosingExpression = PsiTreeUtil.getNonStrictParentOfType(
+                parent,
+                PsiExpression.class
+            );
+            if (enclosingExpression == null) {
+                return null;
+            }
+            if ("assignment.type.incompatible".equals(problemKey) || "return.type.incompatible".equals(problemKey)) {
+                if (myStringType.equals(enclosingExpression.getType()) && requiredType.contains("@Regex")) {
+                    fixes.add(new WrapWithAsRegexFix(enclosingExpression, myRegexUtilClass));
                     fixes.add(new SurroundWithIfRegexFix(enclosingExpression));
                 }
-                final PsiVariable variable = PsiTreeUtil.getNonStrictParentOfType(enclosingExpression, PsiVariable.class);
-                if (variable != null) {
-                    fixes.add(new AddTypeCastFix(variable.getType(), enclosingExpression));
-                }
             }
-        } else if (problemKey.equals("argument.type.incompatible")) {
-            fixes.add(new WrapWithAsRegexFix(myRegexUtilClass));
-        } else {
-            return null;
         }
-        return fixes.toArray(new LocalQuickFix[fixes.size()]);
+
+        final String tooltip = CheckerFrameworkMessages.message("incompatible.types.html.tooltip", description, requiredType, foundType);
+        return myInspectionManager.createProblemDescriptor(
+            problemElement,
+            tooltip,
+            true,
+            ProblemHighlightType.GENERIC_ERROR,
+            isOnTheFly,
+            fixes.toArray(new LocalQuickFix[fixes.size()])
+        );
     }
 
     @NotNull
