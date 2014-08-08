@@ -74,10 +74,11 @@ public class CheckerFrameworkConfigurableUI {
         myAvailableCheckersTable.getTableHeader().setReorderingAllowed(false);
         myAvailableCheckersTable.getRowSorter().toggleSortOrder(1);
         myAvailableCheckersPanel.add(
-            ToolbarDecorator.createDecorator(myAvailableCheckersTable)
-                .addExtraAction(
-                    new AddCustomCheckerButton()
-                ).addExtraAction(
+            ToolbarDecorator.createDecorator(
+                myAvailableCheckersTable
+                //).addExtraAction(
+                //    new AddCustomCheckerButton()
+            ).addExtraAction(
                 new AnActionButton("Select all", AllIcons.Actions.Selectall) {
                     @Override
                     public void actionPerformed(AnActionEvent e) {
@@ -95,6 +96,23 @@ public class CheckerFrameworkConfigurableUI {
                         }
                     }
                 }
+                //).setRemoveAction(
+                //    new AnActionButtonRunnable() {
+                //        @Override
+                //        public void run(AnActionButton button) {
+                //            int selectedRow = myAvailableCheckersTable.getSelectedRow();
+                //            int selectedCheckerIndex = myAvailableCheckersTable.convertRowIndexToModel(selectedRow);
+                //            String selectedChecker = String.valueOf(myCheckersTableModel.getValueAt(selectedCheckerIndex, 1));
+                //            System.out.println(selectedChecker);
+                //        }
+                //    }
+                //).setRemoveActionUpdater(
+                //    new AnActionButtonUpdater() {
+                //        @Override
+                //        public boolean isEnabled(AnActionEvent e) {
+                //            return true;
+                //        }
+                //    }
             ).createPanel(),
             BorderLayout.CENTER
         );
@@ -142,6 +160,7 @@ public class CheckerFrameworkConfigurableUI {
         }
     }
 
+    @SuppressWarnings("UnusedDeclaration")
     private class AddCustomCheckerButton extends AnActionButton {
 
         private final @Nullable PsiClass myProcessorInterface;
