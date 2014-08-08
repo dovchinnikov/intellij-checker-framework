@@ -3,6 +3,7 @@ package com.jetbrains.plugins.checkerframework.util;
 import com.intellij.codeInsight.ExpectedTypeUtil;
 import com.intellij.psi.*;
 import com.intellij.psi.util.PsiTreeUtil;
+import com.siyeh.ig.psiutils.ExpectedTypeUtils;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -57,11 +58,17 @@ public class ExpectedTypesUtil {
 
     @NotNull
     public static PsiAnnotationOwner findAnnotationOwner(@NotNull PsiExpression expression) {
-        PsiAnnotationOwner result = findInDeclaration(expression);
-        if (result == null) result = findInAssignmentExpression(expression);
-        if (result == null) result = findInDeclaration(expression);
-        if (result == null) result = findInMethodCall(expression);
-        if (result == null) result = findInReturn(expression);
+        PsiAnnotationOwner result;
+        if (expression.getContext() instanceof PsiReturnStatement) {
+            result = findInReturn(expression);
+        } else {
+            result = ExpectedTypeUtils.findExpectedType(expression, true);
+        }
+        //result = findInDeclaration(expression);
+        //if (result == null) result = findInAssignmentExpression(expression);
+        //if (result == null) result = findInDeclaration(expression);
+        //if (result == null) result = findInMethodCall(expression);
+        //if (result == null) result = findInReturn(expression);
         assert result != null;
         return result;
     }
