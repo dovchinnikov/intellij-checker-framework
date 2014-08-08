@@ -7,6 +7,7 @@ import com.intellij.openapi.project.Project;
 import com.intellij.psi.PsiFile;
 import com.jetbrains.plugins.checkerframework.service.CheckerFrameworkCompiler;
 import com.jetbrains.plugins.checkerframework.service.CheckerFrameworkProblemDescriptorBuilder;
+import com.jetbrains.plugins.checkerframework.service.CheckerFrameworkSettings;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -21,6 +22,10 @@ public class AwesomeInspection extends BaseJavaBatchLocalInspectionTool {
     @Override
     public ProblemDescriptor[] checkFile(@NotNull final PsiFile file, @NotNull final InspectionManager manager, final boolean isOnTheFly) {
         final Project project = manager.getProject();
+        final CheckerFrameworkSettings settings = CheckerFrameworkSettings.getInstance(project);
+        if (!settings.isValid() || settings.getEnabledCheckers().isEmpty()) {
+            return null;
+        }
         final List<Diagnostic<? extends JavaFileObject>> messages = CheckerFrameworkCompiler
             .getInstance(project)
             .getMessages(file);
