@@ -60,8 +60,8 @@ public class ExpectedTypesUtil {
         PsiAnnotationOwner result = findInDeclaration(expression);
         if (result == null) result = findInAssignmentExpression(expression);
         if (result == null) result = findInDeclaration(expression);
-        if (result == null) result = findInReturn(expression);
         if (result == null) result = findInMethodCall(expression);
+        if (result == null) result = findInReturn(expression);
         assert result != null;
         return result;
     }

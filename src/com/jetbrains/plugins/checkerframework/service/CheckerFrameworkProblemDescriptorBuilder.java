@@ -126,8 +126,8 @@ public class CheckerFrameworkProblemDescriptorBuilder {
             if (enclosingExpression == null) {
                 return null;
             }
-            if ("assignment.type.incompatible".equals(problemKey) || "return.type.incompatible".equals(problemKey)) {
-                if (myStringType.equals(enclosingExpression.getType()) && requiredType.contains("@Regex")) {
+            if (myStringType.equals(enclosingExpression.getType()) && requiredType.contains("@Regex")) {
+                if ("assignment.type.incompatible".equals(problemKey) || "return.type.incompatible".equals(problemKey)) {
                     fixes.add(new WrapWithAsRegexFix(enclosingExpression, myRegexUtilClass));
                     fixes.add(new SurroundWithIfRegexFix(enclosingExpression));
                 }
