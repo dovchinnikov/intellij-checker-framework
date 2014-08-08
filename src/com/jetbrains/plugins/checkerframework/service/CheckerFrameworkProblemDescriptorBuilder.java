@@ -31,12 +31,12 @@ public class CheckerFrameworkProblemDescriptorBuilder {
 
     private static final                     Logger  LOG         = Logger.getInstance(CheckerFrameworkProblemDescriptorBuilder.class);
     private static final @Language("RegExp") String  DELIMITER   = "\\$\\$";
-    private static final @Language("RegExp") String  FQN         = "[@<>\\(\\)\\.\\w\\s:]+";
+    private static final @Language("RegExp") String  TYPE        = "[@<>\\(\\)\\.\\w\\s:\"]+";
     private static final                     Pattern MSG_PATTERN = Pattern.compile(
         "^\\(([\\w\\.]+)\\)\\s" + DELIMITER
         + "\\s(\\d+)\\s" + DELIMITER
-        + "(" + FQN + ")" + DELIMITER
-        + "(" + FQN + ")" + DELIMITER
+        + "(" + TYPE + ")" + DELIMITER
+        + "(" + TYPE + ")" + DELIMITER
         + "\\s\\(\\s?(\\d+)\\s?,\\s?(\\d+)\\s?\\)\\s" + DELIMITER + "([\\w\\s]+\\.)"
         + ".*$",
         Pattern.DOTALL
@@ -48,6 +48,7 @@ public class CheckerFrameworkProblemDescriptorBuilder {
         PROBLEM_KEY_TO_CLASS = new MultiMapEx();
         PROBLEM_KEY_TO_CLASS.putValue("assignment.type.incompatible", PsiStatement.class);
         PROBLEM_KEY_TO_CLASS.putValue("assignment.type.incompatible", PsiLocalVariable.class);
+        PROBLEM_KEY_TO_CLASS.putValue("assignment.type.incompatible", PsiField.class);
         PROBLEM_KEY_TO_CLASS.putValue("argument.type.incompatible", PsiExpression.class);
         PROBLEM_KEY_TO_CLASS.putValue("compound.assignment.type.incompatible", PsiStatement.class);
         PROBLEM_KEY_TO_CLASS.putValue("enhancedfor.type.incompatible", PsiExpression.class);
@@ -124,6 +125,7 @@ public class CheckerFrameworkProblemDescriptorBuilder {
                 PsiExpression.class
             );
             if (enclosingExpression == null) {
+                LOG.warn("Expression is null:\n" + diagnosticString);
                 return null;
             }
             if (myStringType.equals(enclosingExpression.getType()) && requiredType.contains("@Regex")) {
