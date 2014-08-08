@@ -5,6 +5,7 @@ import com.intellij.openapi.components.*;
 import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.util.Condition;
+import com.intellij.openapi.util.text.StringUtil;
 import com.intellij.util.containers.ContainerUtil;
 import com.intellij.util.lang.UrlClassLoader;
 import org.jetbrains.annotations.NonNls;
@@ -19,8 +20,10 @@ import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.net.URL;
 import java.util.*;
+import java.util.jar.Attributes;
 import java.util.jar.JarEntry;
 import java.util.jar.JarFile;
+import java.util.jar.Manifest;
 
 @State(
     name = "CheckerFrameworkPluginSettings",
@@ -33,15 +36,16 @@ import java.util.jar.JarFile;
 )
 public class CheckerFrameworkSettings implements PersistentStateComponent<CheckerFrameworkSettings.State> {
 
-    public static final String CHECKERS_BASE_CLASS_FQN = "org.checkerframework.framework.source.SourceChecker";
-    public static final String CHECKERS_PACKAGE = "org.checkerframework.checker";
-    public static final String AGGREGATE_PROCESSOR_FQN = "com.jetbrains.plugins.checkerframework.util.AggregateCheckerEx";
-    private static final Logger LOG = Logger.getInstance(CheckerFrameworkSettings.class);
-    private final @NotNull List<String> myCheckers = new ArrayList<String>();
+    private static final Logger            LOG                        = Logger.getInstance(CheckerFrameworkSettings.class);
+    private static final PluginClassLoader CURRENT_PLUGIN_CLASSLOADER = (PluginClassLoader)CheckerFrameworkSettings.class.getClassLoader();
+
+    private final @NotNull List<String>                     myCheckers       = new ArrayList<String>();
     private final @NotNull List<Class<? extends Processor>> myCheckerClasses = new ArrayList<Class<? extends Processor>>();
-    private @NotNull State myState = new State();
-    private boolean needReload = true;
+
+    private @NotNull State   myState    = new State();
+    private          boolean needReload = true;
     private Method myAggregateProcessorFactoryMethod;
+    private String myErrorMessage;
 
     @SuppressWarnings("UnusedDeclaration")
     public CheckerFrameworkSettings() {
@@ -55,25 +59,40 @@ public class CheckerFrameworkSettings implements PersistentStateComponent<Checke
         return ServiceManager.getService(project, CheckerFrameworkSettings.class);
     }
 
+    public boolean isValid() {
+        if (needReload) loadClasses();
+        return myState.valid;
+    }
+
+    public String getErrorMessage() {
+        return myErrorMessage;
+    }
+
+    @NotNull
+    public String getVersion() {
+        if (needReload) loadClasses();
+        return myState.version;
+    }
+
     @NotNull
     public String getPathToCheckerJar() {
-        return myState.myPathToCheckerJar;
+        return myState.pathToCheckerJar;
     }
 
     public void setPathToCheckerJar(@NotNull String pathToCheckerJar) {
-        needReload = !myState.myPathToCheckerJar.equals(pathToCheckerJar);
-        myState.myPathToCheckerJar = pathToCheckerJar;
+        needReload = !myState.pathToCheckerJar.equals(pathToCheckerJar);
+        myState.pathToCheckerJar = pathToCheckerJar;
     }
 
     @NotNull
     public Set<String> getBuiltInCheckers() {
         if (needReload) loadClasses();
-        return myState.myBuiltInCheckers;
+        return myState.builtInCheckers;
     }
 
     @NotNull
     public Set<String> getEnabledCheckers() {
-        return myState.myEnabledCheckers;
+        return myState.enabledCheckers;
     }
 
     @NotNull
@@ -86,23 +105,25 @@ public class CheckerFrameworkSettings implements PersistentStateComponent<Checke
     public Set<Class<? extends Processor>> getEnabledCheckerClasses() {
         if (needReload) loadClasses();
         final Set<Class<? extends Processor>> result = new HashSet<Class<? extends Processor>>(myCheckerClasses);
-        ContainerUtil.retainAll(result, new Condition<Class<? extends Processor>>() {
-            @Override
-            public boolean value(Class<? extends Processor> aClass) {
-                return myState.myEnabledCheckers.contains(aClass.getCanonicalName());
+        ContainerUtil.retainAll(
+            result, new Condition<Class<? extends Processor>>() {
+                @Override
+                public boolean value(Class<? extends Processor> aClass) {
+                    return myState.enabledCheckers.contains(aClass.getCanonicalName());
+                }
             }
-        });
+        );
         return result;
     }
 
     public void addCustomChecker(@NotNull String clazzFQN) {
-        myState.myCustomCheckers.add(clazzFQN);
+        myState.customCheckers.add(clazzFQN);
         refreshCheckers();
     }
 
     @NotNull
     public List<String> getOptions() {
-        return myState.myOptions;
+        return myState.options;
     }
 
     @NotNull
@@ -113,7 +134,7 @@ public class CheckerFrameworkSettings implements PersistentStateComponent<Checke
 
     @Override
     public void loadState(final State state) {
-        needReload = needReload || !state.myPathToCheckerJar.equals(state.myPathToCheckerJar);
+        needReload = needReload || !state.pathToCheckerJar.equals(state.pathToCheckerJar);
         myState = new State(state);
     }
 
@@ -149,22 +170,61 @@ public class CheckerFrameworkSettings implements PersistentStateComponent<Checke
 
     private void loadClasses() {
         myCheckerClasses.clear();
-        myState.myBuiltInCheckers.clear();
-        final PluginClassLoader currentPluginClassLoader = (PluginClassLoader)this.getClass().getClassLoader();
+        myState.builtInCheckers.clear();
+        myState.valid = false;
+
         JarFile jar = null;
         try {
-            final URL jarUrl = new File(myState.myPathToCheckerJar).toURI().toURL();
-            final UrlClassLoader jarClassLoader = new PluginClassLoader(new ArrayList<URL>(currentPluginClassLoader.getUrls()) {{
-                add(jarUrl);
-            }}, new ClassLoader[]{currentPluginClassLoader}, currentPluginClassLoader.getPluginId(), "lol", null);
-            final Class<? extends Processor> superclazz =
-                jarClassLoader.loadClass(CHECKERS_BASE_CLASS_FQN).asSubclass(Processor.class);
-            final Class<?> aggregateProcessorClass =
-                jarClassLoader.loadClass(AGGREGATE_PROCESSOR_FQN);
-            myAggregateProcessorFactoryMethod = aggregateProcessorClass.getDeclaredMethod("create", Collection.class);
+            if (StringUtil.isEmptyOrSpaces(myState.pathToCheckerJar)) {
+                myErrorMessage = "Path to checker.jar is not selected";
+                return;
+            }
 
+            final File file = new File(myState.pathToCheckerJar);
+            if (!file.exists()) {
+                myErrorMessage = "'" + myState.pathToCheckerJar + "' doesn't exist";
+                return;
+            } else if (file.isDirectory()) {
+                myErrorMessage = "'" + myState.pathToCheckerJar + "' is a directory";
+                return;
+            }
+
+            final URL jarUrl = new File(myState.pathToCheckerJar).toURI().toURL();
             //noinspection IOResourceOpenedButNotSafelyClosed
             jar = new JarFile(jarUrl.getFile());
+            {
+                final Manifest manifest = jar.getManifest();
+                final Attributes attributes = manifest.getMainAttributes();
+                final String version = attributes.getValue(Stuff.MANIFEST_VERSION_KEY);
+                if (StringUtil.isEmptyOrSpaces(version)) {
+                    myErrorMessage = "Cannot determine version";
+                    return;
+                }
+                if (version.compareTo(Stuff.MINIMUM_SUPPORTED_VERSION) < 0) {
+                    myErrorMessage = "Version required: " + Stuff.MINIMUM_SUPPORTED_VERSION + ", found: " + version;
+                    return;
+                }
+                myState.version = version;
+            }
+
+            final UrlClassLoader jarClassLoader = new PluginClassLoader(
+                new ArrayList<URL>(CURRENT_PLUGIN_CLASSLOADER.getUrls()) {{
+                    add(jarUrl);
+                }}, new ClassLoader[]{CURRENT_PLUGIN_CLASSLOADER}, CURRENT_PLUGIN_CLASSLOADER.getPluginId(), "CF", null
+            );
+            final Class<? extends Processor> superclazz =
+                jarClassLoader.loadClass(Stuff.CHECKERS_BASE_CLASS_FQN).asSubclass(Processor.class);
+            final Class<?> aggregateProcessorClass =
+                jarClassLoader.loadClass(Stuff.AGGREGATE_PROCESSOR_FQN);
+
+            try {
+                myAggregateProcessorFactoryMethod = aggregateProcessorClass.getDeclaredMethod("create", Collection.class);
+            } catch (NoSuchMethodException e) {
+                LOG.error(e);
+                myErrorMessage = "Cannot find factory method";
+                return;
+            }
+
             for (final JarEntry entry : Collections.list(jar.entries())) {
                 if (!entry.isDirectory() && entry.toString().endsWith(".class")) {
                     try {
@@ -174,7 +234,7 @@ public class CheckerFrameworkSettings implements PersistentStateComponent<Checke
                             .replace(".class", "");
 
                         final String caseIgnoredClazzName = clazzName.toLowerCase();
-                        if (!caseIgnoredClazzName.startsWith(CHECKERS_PACKAGE)
+                        if (!caseIgnoredClazzName.startsWith(Stuff.CHECKERS_PACKAGE)
                             || caseIgnoredClazzName.contains("sub")
                             || caseIgnoredClazzName.contains("abstract")
                             || caseIgnoredClazzName.contains("adapter")) {
@@ -183,7 +243,7 @@ public class CheckerFrameworkSettings implements PersistentStateComponent<Checke
                         final Class<? extends Processor> clazz = jarClassLoader.loadClass(clazzName).asSubclass(superclazz);
                         if (!Modifier.isAbstract(clazz.getModifiers()) && !clazz.isAnonymousClass()) {
                             myCheckerClasses.add(clazz);
-                            myState.myBuiltInCheckers.add(clazz.getCanonicalName());
+                            myState.builtInCheckers.add(clazz.getCanonicalName());
                         }
                     } catch (ClassNotFoundException e) {
                         LOG.error(e);
@@ -192,51 +252,58 @@ public class CheckerFrameworkSettings implements PersistentStateComponent<Checke
                     }
                 }
             }
+            myErrorMessage = null;
+            myState.valid = true;
         } catch (IOException e) {
             LOG.debug(e);
+            myErrorMessage = e.getMessage();
         } catch (ClassNotFoundException e) {
             LOG.debug(e);
-        } catch (NoSuchMethodException e) {
-            LOG.debug(e);
+            myErrorMessage = e.getMessage();
         } finally {
             try {
                 if (jar != null) jar.close();
             } catch (IOException e) {
                 LOG.error(e);
             }
+            refreshCheckers();
+            needReload = false;
         }
-
-        refreshCheckers();
-        needReload = false;
     }
 
     private void refreshCheckers() {
         myCheckers.clear();
-        myCheckers.addAll(myState.myBuiltInCheckers);
-        myCheckers.addAll(myState.myCustomCheckers);
+        myCheckers.addAll(myState.builtInCheckers);
+        myCheckers.addAll(myState.customCheckers);
     }
 
     public static class State {
-        public @NotNull String myPathToCheckerJar;
-        public @NotNull Set<String> myBuiltInCheckers;
-        public @NotNull Set<String> myCustomCheckers;
-        public @NotNull Set<String> myEnabledCheckers;
-        public @NotNull List<String> myOptions;
+        public @NotNull String       pathToCheckerJar;
+        public @NotNull Set<String>  builtInCheckers;
+        public @NotNull Set<String>  customCheckers;
+        public @NotNull Set<String>  enabledCheckers;
+        public @NotNull List<String> options;
+        public @NotNull String       version;
+        public          boolean      valid;
 
         public State() {
-            myPathToCheckerJar = "";
-            myBuiltInCheckers = new HashSet<String>();
-            myCustomCheckers = new HashSet<String>();
-            myEnabledCheckers = new HashSet<String>();
-            myOptions = new ArrayList<String>();
+            pathToCheckerJar = "";
+            builtInCheckers = new HashSet<String>();
+            customCheckers = new HashSet<String>();
+            enabledCheckers = new HashSet<String>();
+            options = new ArrayList<String>();
+            version = "";
+            valid = false;
         }
 
         public State(@NotNull State state) {
-            myPathToCheckerJar = state.myPathToCheckerJar;
-            myBuiltInCheckers = new HashSet<String>(state.myBuiltInCheckers);
-            myCustomCheckers = new HashSet<String>(state.myCustomCheckers);
-            myEnabledCheckers = new HashSet<String>(state.myEnabledCheckers);
-            myOptions = new ArrayList<String>(state.myOptions);
+            pathToCheckerJar = state.pathToCheckerJar;
+            builtInCheckers = new HashSet<String>(state.builtInCheckers);
+            customCheckers = new HashSet<String>(state.customCheckers);
+            enabledCheckers = new HashSet<String>(state.enabledCheckers);
+            options = new ArrayList<String>(state.options);
+            version = state.version;
+            valid = state.valid;
         }
 
         private static <T> boolean collectionEquals(@NotNull Collection<T> a, @NotNull Collection<T> b) {
@@ -251,20 +318,25 @@ public class CheckerFrameworkSettings implements PersistentStateComponent<Checke
             if (o == null || getClass() != o.getClass()) {
                 return false;
             }
-            State state = (State) o;
-            return myPathToCheckerJar.equals(state.myPathToCheckerJar)
-                    && collectionEquals(myBuiltInCheckers, state.myBuiltInCheckers)
-                    && collectionEquals(myCustomCheckers, state.myCustomCheckers)
-                    && collectionEquals(myEnabledCheckers, state.myEnabledCheckers)
-                    && collectionEquals(myOptions, state.myOptions);
+            final State state = (State)o;
+            return valid == state.valid
+                   && version.equals(version)
+                   && pathToCheckerJar.equals(state.pathToCheckerJar)
+                   && collectionEquals(builtInCheckers, state.builtInCheckers)
+                   && collectionEquals(customCheckers, state.customCheckers)
+                   && collectionEquals(enabledCheckers, state.enabledCheckers)
+                   && collectionEquals(options, state.options);
         }
 
         @Override
         public int hashCode() {
-            int result = myPathToCheckerJar.hashCode();
-            result = 31 * result + myBuiltInCheckers.hashCode();
-            result = 31 * result + myCustomCheckers.hashCode();
-            result = 31 * result + myEnabledCheckers.hashCode();
+            int result = pathToCheckerJar.hashCode();
+            result = 31 * result + builtInCheckers.hashCode();
+            result = 31 * result + customCheckers.hashCode();
+            result = 31 * result + enabledCheckers.hashCode();
+            result = 31 * result + options.hashCode();
+            result = 31 * result + version.hashCode();
+            result = 31 * result + (valid ? 1 : 0);
             return result;
         }
     }

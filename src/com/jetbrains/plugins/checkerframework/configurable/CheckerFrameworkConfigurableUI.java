@@ -10,7 +10,6 @@ import com.intellij.openapi.project.Project;
 import com.intellij.openapi.ui.ComponentWithBrowseButton;
 import com.intellij.openapi.ui.TextComponentAccessor;
 import com.intellij.openapi.ui.TextFieldWithBrowseButton;
-import com.intellij.openapi.util.text.StringUtil;
 import com.intellij.psi.JavaPsiFacade;
 import com.intellij.psi.PsiClass;
 import com.intellij.psi.search.GlobalSearchScope;
@@ -19,6 +18,7 @@ import com.intellij.ui.components.JBLabel;
 import com.intellij.ui.table.JBTable;
 import com.intellij.util.ui.EditableModel;
 import com.jetbrains.plugins.checkerframework.service.CheckerFrameworkSettings;
+import com.jetbrains.plugins.checkerframework.service.Stuff;
 import org.jetbrains.annotations.Nullable;
 
 import javax.swing.*;
@@ -26,25 +26,23 @@ import javax.swing.event.DocumentEvent;
 import javax.swing.table.TableCellEditor;
 import javax.swing.table.TableModel;
 import java.awt.*;
-import java.io.File;
 
 public class CheckerFrameworkConfigurableUI {
 
     private static final FileChooserDescriptor JAR_DESCRIPTOR = new FileChooserDescriptor(false, false, true, true, false, false);
 
-    private final Project myProject;
+    private final Project                  myProject;
     private final CheckerFrameworkSettings mySettings;
+    private final CheckersTableModel       myCheckersTableModel;
 
-    private JPanel myRootPane;
+    private JPanel                    myRootPane;
     private TextFieldWithBrowseButton myPathToCheckerJarField;
-    private HyperlinkLabel myDownloadCheckerLink;
-    private JPanel myAvailableCheckersPanel;
-    private JBTable myAvailableCheckersTable;
-    private JPanel myOptionsPanel;
-    private JBTable myOptionsTable;
-    private JBLabel myErrorLabel;
-
-    private final CheckersTableModel myCheckersTableModel;
+    private HyperlinkLabel            myDownloadCheckerLink;
+    private JPanel                    myAvailableCheckersPanel;
+    private JBTable                   myAvailableCheckersTable;
+    private JPanel                    myOptionsPanel;
+    private JBTable                   myOptionsTable;
+    private JBLabel                   myInfoLabel;
 
     public CheckerFrameworkConfigurableUI(final Project project, final CheckerFrameworkSettings settings) {
         myProject = project;
@@ -79,43 +77,49 @@ public class CheckerFrameworkConfigurableUI {
             ToolbarDecorator.createDecorator(myAvailableCheckersTable)
                 .addExtraAction(
                     new AddCustomCheckerButton()
-                ).addExtraAction(new AnActionButton("Select all", AllIcons.Actions.Selectall) {
-                @Override
-                public void actionPerformed(AnActionEvent e) {
-                    for (int i = 0; i < myAvailableCheckersTable.getRowCount(); i++) {
-                        myAvailableCheckersTable.setValueAt(true, i, 0);
+                ).addExtraAction(
+                new AnActionButton("Select all", AllIcons.Actions.Selectall) {
+                    @Override
+                    public void actionPerformed(AnActionEvent e) {
+                        for (int i = 0; i < myAvailableCheckersTable.getRowCount(); i++) {
+                            myAvailableCheckersTable.setValueAt(true, i, 0);
+                        }
                     }
                 }
-            }).addExtraAction(new AnActionButton("Unselect all", AllIcons.Actions.Unselectall) {
-                @Override
-                public void actionPerformed(AnActionEvent e) {
-                    for (int i = 0; i < myAvailableCheckersTable.getRowCount(); i++) {
-                        myAvailableCheckersTable.setValueAt(false, i, 0);
+            ).addExtraAction(
+                new AnActionButton("Unselect all", AllIcons.Actions.Unselectall) {
+                    @Override
+                    public void actionPerformed(AnActionEvent e) {
+                        for (int i = 0; i < myAvailableCheckersTable.getRowCount(); i++) {
+                            myAvailableCheckersTable.setValueAt(false, i, 0);
+                        }
                     }
                 }
-            }).createPanel(),
+            ).createPanel(),
             BorderLayout.CENTER
         );
 
         myOptionsTable = new JBTable(new OptionsTableModel(settings));
         myOptionsPanel.add(
             ToolbarDecorator.createDecorator(myOptionsTable)
-                .setAddAction(new AnActionButtonRunnable() {
-                    @Override
-                    public void run(AnActionButton anActionButton) {
-                        final TableCellEditor cellEditor = myOptionsTable.getCellEditor();
-                        if (cellEditor != null) {
-                            cellEditor.stopCellEditing();
+                .setAddAction(
+                    new AnActionButtonRunnable() {
+                        @Override
+                        public void run(AnActionButton anActionButton) {
+                            final TableCellEditor cellEditor = myOptionsTable.getCellEditor();
+                            if (cellEditor != null) {
+                                cellEditor.stopCellEditing();
+                            }
+                            final TableModel model = myOptionsTable.getModel();
+                            ((EditableModel)model).addRow();
+                            TableUtil.editCellAt(myOptionsTable, model.getRowCount() - 1, 0);
                         }
-                        final TableModel model = myOptionsTable.getModel();
-                        ((EditableModel)model).addRow();
-                        TableUtil.editCellAt(myOptionsTable, model.getRowCount() - 1, 0);
                     }
-                }).createPanel(),
+                ).createPanel(),
             BorderLayout.CENTER
         );
 
-        myErrorLabel.setIcon(AllIcons.General.BalloonWarning);
+        myInfoLabel.setIcon(AllIcons.General.BalloonWarning);
     }
 
     public JComponent getRoot() {
@@ -126,30 +130,14 @@ public class CheckerFrameworkConfigurableUI {
         myPathToCheckerJarField.setText(mySettings.getPathToCheckerJar());
     }
 
-    private void showWarning(String text) {
-        myErrorLabel.setText(text);
-        myErrorLabel.setVisible(true);
-    }
-
     private class PathToJarChangeListener extends DocumentAdapter {
 
         @Override
         protected void textChanged(DocumentEvent e) {
-            myErrorLabel.setVisible(false);
-
-            final String pathToCheckerJar = myPathToCheckerJarField.getText();
-            if (StringUtil.isEmptyOrSpaces(pathToCheckerJar)) {
-                showWarning("Path to checker.jar is not selected");
-            } else {
-                final File checkerJar = new File(pathToCheckerJar);
-                if (!checkerJar.exists()) {
-                    showWarning("'" + pathToCheckerJar + "' doesn't exist");
-                } else if (checkerJar.isDirectory()) {
-                    showWarning("'" + pathToCheckerJar + "' is a directory");
-                }
-            }
-
-            mySettings.setPathToCheckerJar(pathToCheckerJar);
+            mySettings.setPathToCheckerJar(myPathToCheckerJarField.getText());
+            myInfoLabel.setText(mySettings.isValid() ? mySettings.getVersion() : mySettings.getErrorMessage());
+            myInfoLabel.setIcon(mySettings.isValid() ? AllIcons.General.BalloonInformation : AllIcons.General.BalloonWarning);
+            myAvailableCheckersTable.setEnabled(mySettings.isValid());
             myCheckersTableModel.fireTableDataChanged();
         }
     }
@@ -170,7 +158,7 @@ public class CheckerFrameworkConfigurableUI {
         public AddCustomCheckerButton() {
             super("Add custom checker", AllIcons.ToolbarDecorator.AddClass);
             myProcessorInterface = JavaPsiFacade.getInstance(myProject).findClass(
-                CheckerFrameworkSettings.CHECKERS_BASE_CLASS_FQN,
+                Stuff.CHECKERS_BASE_CLASS_FQN,
                 GlobalSearchScope.allScope(myProject)
             );
             setEnabled(myProcessorInterface != null);
