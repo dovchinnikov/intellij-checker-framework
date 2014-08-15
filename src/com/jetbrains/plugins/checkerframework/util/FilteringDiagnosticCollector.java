@@ -19,8 +19,17 @@ public class FilteringDiagnosticCollector implements DiagnosticListener<JavaFile
 
     @Override
     public void report(Diagnostic<? extends JavaFileObject> diagnostic) {
+        if (diagnostic.getKind() == Diagnostic.Kind.ERROR) {
+            System.out.println(diagnostic);
+        }
         if (PROC_CODE.equals(diagnostic.getCode())) {
             myDiagnostics.add(diagnostic);
         }
+    }
+
+    public List<Diagnostic<? extends JavaFileObject>> getAndClear() {
+        List<Diagnostic<? extends JavaFileObject>> diagnostics = new ArrayList<Diagnostic<? extends JavaFileObject>>(myDiagnostics);
+        myDiagnostics.clear();
+        return diagnostics;
     }
 }

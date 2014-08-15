@@ -1,29 +1,35 @@
 package com.jetbrains.plugins.checkerframework.service;
 
 import com.intellij.ide.plugins.cl.PluginClassLoader;
-import com.intellij.openapi.components.*;
+import com.intellij.openapi.components.PersistentStateComponent;
+import com.intellij.openapi.components.ServiceManager;
+import com.intellij.openapi.components.State;
+import com.intellij.openapi.components.Storage;
+import com.intellij.openapi.components.StoragePathMacros;
 import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.util.Condition;
-import com.intellij.openapi.util.text.StringUtil;
 import com.intellij.util.containers.ContainerUtil;
-import com.intellij.util.lang.UrlClassLoader;
-import org.jetbrains.annotations.NonNls;
+import com.jetbrains.plugins.checkerframework.util.AggregateCheckerEx;
+import org.checkerframework.checker.fenum.FenumChecker;
+import org.checkerframework.checker.lock.LockChecker;
+import org.checkerframework.checker.nullness.NullnessChecker;
+import org.checkerframework.checker.regex.RegexChecker;
+import org.checkerframework.checker.units.UnitsChecker;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import javax.annotation.processing.Processor;
-import java.io.File;
 import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
-import java.lang.reflect.Modifier;
-import java.net.URL;
-import java.util.*;
-import java.util.jar.Attributes;
-import java.util.jar.JarEntry;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
 import java.util.jar.JarFile;
-import java.util.jar.Manifest;
 
 @State(
     name = "CheckerFrameworkPluginSettings",
@@ -37,6 +43,7 @@ import java.util.jar.Manifest;
 public class CheckerFrameworkSettings implements PersistentStateComponent<CheckerFrameworkSettingsState> {
 
     private static final Logger            LOG                        = Logger.getInstance(CheckerFrameworkSettings.class);
+    @SuppressWarnings("UnusedDeclaration")
     private static final PluginClassLoader CURRENT_PLUGIN_CLASSLOADER = (PluginClassLoader)CheckerFrameworkSettings.class.getClassLoader();
 
     private final @NotNull List<String>                     myCheckers       = new ArrayList<String>();
@@ -135,7 +142,7 @@ public class CheckerFrameworkSettings implements PersistentStateComponent<Checke
 
     @Override
     public void loadState(final CheckerFrameworkSettingsState state) {
-        needReload = needReload || !state.pathToCheckerJar.equals(state.pathToCheckerJar);
+        needReload = needReload || !myState.pathToCheckerJar.equals(state.pathToCheckerJar);
         myState = new CheckerFrameworkSettingsState(state);
     }
 
@@ -176,6 +183,7 @@ public class CheckerFrameworkSettings implements PersistentStateComponent<Checke
 
         JarFile jar = null;
         try {
+            /*
             if (StringUtil.isEmptyOrSpaces(myState.pathToCheckerJar)) {
                 myErrorMessage = "Path to checker.jar is not selected";
                 return;
@@ -215,8 +223,9 @@ public class CheckerFrameworkSettings implements PersistentStateComponent<Checke
             );
             final Class<? extends Processor> superclazz =
                 jarClassLoader.loadClass(Stuff.CHECKERS_BASE_CLASS_FQN).asSubclass(Processor.class);
-            final Class<?> aggregateProcessorClass =
-                jarClassLoader.loadClass(Stuff.AGGREGATE_PROCESSOR_FQN);
+                */
+            final Class<?> aggregateProcessorClass = AggregateCheckerEx.class;
+            //jarClassLoader.loadClass(Stuff.AGGREGATE_PROCESSOR_FQN);
 
             try {
                 myAggregateProcessorFactoryMethod = aggregateProcessorClass.getDeclaredMethod("create", Collection.class);
@@ -225,7 +234,7 @@ public class CheckerFrameworkSettings implements PersistentStateComponent<Checke
                 myErrorMessage = "Cannot find factory method";
                 return;
             }
-
+/*
             for (final JarEntry entry : Collections.list(jar.entries())) {
                 if (!entry.isDirectory() && entry.toString().endsWith(".class")) {
                     try {
@@ -253,16 +262,31 @@ public class CheckerFrameworkSettings implements PersistentStateComponent<Checke
                     }
                 }
             }
+            */
+
+            myCheckerClasses.addAll(
+                Arrays.asList(
+                    NullnessChecker.class,
+                    UnitsChecker.class,
+                    FenumChecker.class,
+                    RegexChecker.class,
+                    LockChecker.class
+                )
+            );
+            for (Class<? extends Processor> checkerClass : myCheckerClasses) {
+                myState.builtInCheckers.add(checkerClass.getCanonicalName());
+            }
             myErrorMessage = null;
             myState.valid = true;
-        } catch (IOException e) {
-            LOG.debug(e);
-            myErrorMessage = e.getMessage();
-        } catch (ClassNotFoundException e) {
-            LOG.debug(e);
-            myErrorMessage = e.getMessage();
+            //} catch (IOException e) {
+            //    LOG.debug(e);
+            //    myErrorMessage = e.getMessage();
+            //} catch (ClassNotFoundException e) {
+            //    LOG.debug(e);
+            //    myErrorMessage = e.getMessage();
         } finally {
             try {
+                //noinspection ConstantConditions
                 if (jar != null) jar.close();
             } catch (IOException e) {
                 LOG.error(e);
