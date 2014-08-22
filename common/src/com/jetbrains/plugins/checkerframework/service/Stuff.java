@@ -8,6 +8,7 @@ public interface Stuff {
     String CHECKERS_BASE_CLASS_FQN   = "org.checkerframework.framework.source.SourceChecker";
     String CHECKERS_PACKAGE          = "org.checkerframework.checker";
     String AGGREGATE_PROCESSOR_FQN   = "com.jetbrains.plugins.checkerframework.util.AggregateCheckerEx";
+    String COMPILER_IMPL_FQN         = "com.jetbrains.plugins.checkerframework.util.CheckerFrameworkCompilerImpl";
     String REGEX_ANNO_FQN            = "org.checkerframework.checker.regex.qual.Regex";
     String REGEX_UTIL_FQN            = "org.checkerframework.checker.regex.RegexUtil";
 }

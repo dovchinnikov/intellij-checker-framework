@@ -129,7 +129,7 @@ public class CheckerFrameworkConfigurableUI {
                                 cellEditor.stopCellEditing();
                             }
                             final TableModel model = myOptionsTable.getModel();
-                            ((EditableModel)model).addRow();
+                            ((EditableModel) model).addRow();
                             TableUtil.editCellAt(myOptionsTable, model.getRowCount() - 1, 0);
                         }
                     }
@@ -153,9 +153,9 @@ public class CheckerFrameworkConfigurableUI {
         @Override
         protected void textChanged(DocumentEvent e) {
             mySettings.setPathToCheckerJar(myPathToCheckerJarField.getText());
-            myInfoLabel.setText(mySettings.isValid() ? mySettings.getVersion() : mySettings.getErrorMessage());
-            myInfoLabel.setIcon(mySettings.isValid() ? AllIcons.General.BalloonInformation : AllIcons.General.BalloonWarning);
-            myAvailableCheckersTable.setEnabled(mySettings.isValid());
+            myInfoLabel.setText(mySettings.valid() ? mySettings.getVersion() : mySettings.getErrorMessage());
+            myInfoLabel.setIcon(mySettings.valid() ? AllIcons.General.BalloonInformation : AllIcons.General.BalloonWarning);
+            myAvailableCheckersTable.setEnabled(mySettings.valid());
             myCheckersTableModel.fireTableDataChanged();
         }
     }
@@ -169,8 +169,8 @@ public class CheckerFrameworkConfigurableUI {
             public boolean isAccepted(final PsiClass psiClazz) {
                 assert myProcessorInterface != null;
                 return psiClazz.getQualifiedName() != null
-                       && !mySettings.getBuiltInCheckers().contains(psiClazz.getQualifiedName())
-                       && psiClazz.isInheritor(myProcessorInterface, true);
+                    && !mySettings.getBuiltInCheckers().contains(psiClazz.getQualifiedName())
+                    && psiClazz.isInheritor(myProcessorInterface, true);
             }
         };
 

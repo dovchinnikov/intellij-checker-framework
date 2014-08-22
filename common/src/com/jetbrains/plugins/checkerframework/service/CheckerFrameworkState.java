@@ -4,7 +4,7 @@ import org.jetbrains.annotations.NotNull;
 
 import java.util.*;
 
-public class CheckerFrameworkSettingsState {
+public class CheckerFrameworkState {
     public @NotNull String       pathToCheckerJar;
     public @NotNull Set<String>  builtInCheckers;
     public @NotNull Set<String>  customCheckers;
@@ -13,7 +13,7 @@ public class CheckerFrameworkSettingsState {
     public @NotNull String       version;
     public          boolean      valid;
 
-    public CheckerFrameworkSettingsState() {
+    public CheckerFrameworkState() {
         pathToCheckerJar = "";
         builtInCheckers = new HashSet<String>();
         customCheckers = new HashSet<String>();
@@ -23,7 +23,7 @@ public class CheckerFrameworkSettingsState {
         valid = false;
     }
 
-    public CheckerFrameworkSettingsState(@NotNull CheckerFrameworkSettingsState state) {
+    public CheckerFrameworkState(@NotNull CheckerFrameworkState state) {
         pathToCheckerJar = state.pathToCheckerJar;
         builtInCheckers = new HashSet<String>(state.builtInCheckers);
         customCheckers = new HashSet<String>(state.customCheckers);
@@ -45,7 +45,7 @@ public class CheckerFrameworkSettingsState {
         if (o == null || getClass() != o.getClass()) {
             return false;
         }
-        final CheckerFrameworkSettingsState state = (CheckerFrameworkSettingsState)o;
+        final CheckerFrameworkState state = (CheckerFrameworkState)o;
         return valid == state.valid
                && version.equals(version)
                && pathToCheckerJar.equals(state.pathToCheckerJar)

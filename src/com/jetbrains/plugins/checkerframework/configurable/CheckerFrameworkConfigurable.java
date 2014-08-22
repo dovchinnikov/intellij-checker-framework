@@ -12,8 +12,8 @@ import javax.swing.*;
 
 public class CheckerFrameworkConfigurable implements Configurable {
 
-    private final CheckerFrameworkSettings myOriginalSettings;
-    private final CheckerFrameworkSettings mySettings;
+    private final CheckerFrameworkSettings       myOriginalSettings;
+    private final CheckerFrameworkSettings       mySettings;
     private final CheckerFrameworkConfigurableUI myUI;
 
     public CheckerFrameworkConfigurable(final @NotNull Project project) {

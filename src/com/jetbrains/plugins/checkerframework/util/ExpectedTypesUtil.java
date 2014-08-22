@@ -7,6 +7,7 @@ import com.siyeh.ig.psiutils.ExpectedTypeUtils;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
+@SuppressWarnings("UnusedDeclaration")
 public class ExpectedTypesUtil {
 
     @Nullable

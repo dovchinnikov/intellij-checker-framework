@@ -6,8 +6,8 @@ import javax.swing.table.AbstractTableModel;
 
 public class CheckersTableModel extends AbstractTableModel {
 
-    private static final String[] COLUMN_NAMES = {"Enabled", "Checker class"};
-    private static final Class[] COLUMN_CLASSES = {Boolean.class, String.class};
+    private static final String[] COLUMN_NAMES   = {"Enabled", "Checker class"};
+    private static final Class[]  COLUMN_CLASSES = {Boolean.class, String.class};
 
     private final CheckerFrameworkSettings mySettings;
 

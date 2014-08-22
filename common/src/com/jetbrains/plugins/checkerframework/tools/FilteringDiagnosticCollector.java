@@ -1,4 +1,4 @@
-package com.jetbrains.plugins.checkerframework.util;
+package com.jetbrains.plugins.checkerframework.tools;
 
 import javax.tools.*;
 import java.util.ArrayList;

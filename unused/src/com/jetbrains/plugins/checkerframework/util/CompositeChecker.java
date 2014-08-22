@@ -14,6 +14,7 @@ import javax.annotation.processing.RoundEnvironment;
 import javax.lang.model.SourceVersion;
 import javax.lang.model.element.TypeElement;
 import java.lang.reflect.Field;
+import java.lang.reflect.Method;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.Set;
@@ -34,28 +35,30 @@ public class CompositeChecker extends AbstractProcessor {
                 LOG.error(e);
             }
         }
-        task.addTaskListener(new TaskListener() {
-            @Override
-            public void started(TaskEvent e) {
-            }
+        task.addTaskListener(
+            new TaskListener() {
+                @Override
+                public void started(TaskEvent e) {
+                }
 
-            @Override
-            public void finished(TaskEvent e) {
-                if (e.getKind() == TaskEvent.Kind.ANALYZE) {
-                    for (Processor checker : checkers) {
-                        final Field hackField = getFieldInHierarchy(checker.getClass(), "errsOnLastExit");
-                        if (hackField == null) {
-                            continue;
-                        }
-                        hackField.setAccessible(true);
-                        try {
-                            hackField.setInt(checker, Integer.MAX_VALUE - 1);
-                        } catch (IllegalAccessException ignored) {
+                @Override
+                public void finished(TaskEvent e) {
+                    if (e.getKind() == TaskEvent.Kind.ANALYZE) {
+                        for (Processor checker : checkers) {
+                            final Field hackField = getFieldInHierarchy(checker.getClass(), "errsOnLastExit");
+                            if (hackField == null) {
+                                continue;
+                            }
+                            hackField.setAccessible(true);
+                            try {
+                                hackField.setInt(checker, Integer.MAX_VALUE - 1);
+                            } catch (IllegalAccessException ignored) {
+                            }
                         }
                     }
                 }
             }
-        });
+        );
     }
 
     @Override
@@ -109,5 +112,19 @@ public class CompositeChecker extends AbstractProcessor {
             }
         }
         return hackField;
+    }
+
+    @Nullable
+    public static Method getMethodInHierarchy(@NotNull Class<?> clazz, @NotNull String methodName, @NotNull Class... args) {
+        Method method = null;
+        Class<?> superClazz = clazz;
+        while (method == null && superClazz != null) {
+            try {
+                method = superClazz.getDeclaredMethod(methodName, args);
+            } catch (NoSuchMethodException e) {
+                superClazz = superClazz.getSuperclass();
+            }
+        }
+        return method;
     }
 }
