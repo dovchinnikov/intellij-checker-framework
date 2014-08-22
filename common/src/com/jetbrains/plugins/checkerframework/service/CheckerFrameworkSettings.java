@@ -3,7 +3,6 @@ package com.jetbrains.plugins.checkerframework.service;
 import com.intellij.ide.plugins.cl.PluginClassLoader;
 import com.intellij.openapi.components.*;
 import com.intellij.openapi.diagnostic.Logger;
-import com.intellij.openapi.progress.ProcessCanceledException;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.util.Condition;
 import com.intellij.openapi.util.text.StringUtil;
@@ -11,7 +10,6 @@ import com.intellij.util.containers.ContainerUtil;
 import com.intellij.util.lang.UrlClassLoader;
 import org.jetbrains.annotations.NonNls;
 import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
 
 import java.io.File;
 import java.io.IOException;
@@ -114,22 +112,15 @@ public class CheckerFrameworkSettings implements PersistentStateComponent<Checke
         return myState.options;
     }
 
-    @Nullable
-    public Object createCompiler() {
+    @NotNull
+    public Object createCompiler() throws IllegalAccessException, InvocationTargetException, InstantiationException {
         if (needReload) loadClasses();
         assert valid() : "Not valid";
-        try {
-            return compilerConstructor.newInstance(
-                myProject,
-                createCompileOptions(),
-                getEnabledCheckerClasses()
-            );
-        } catch (ProcessCanceledException ignored) {
-        } catch (InvocationTargetException ignored) {
-        } catch (InstantiationException ignored) {
-        } catch (IllegalAccessException ignored) {
-        }
-        return null;
+        return compilerConstructor.newInstance(
+            myProject,
+            createCompileOptions(),
+            getEnabledCheckerClasses()
+        );
     }
 
     @NotNull
@@ -165,10 +156,15 @@ public class CheckerFrameworkSettings implements PersistentStateComponent<Checke
         return ServiceManager.getService(project, CheckerFrameworkSettings.class);
     }
 
-    private void loadClasses() {
+    private void clean() {
         myCheckerClasses.clear();
         myState.builtInCheckers.clear();
         myState.valid = false;
+        compilerConstructor = null;
+    }
+
+    private void loadClasses() {
+        clean();
 
         JarFile jar = null;
         try {
@@ -269,12 +265,15 @@ public class CheckerFrameworkSettings implements PersistentStateComponent<Checke
         } catch (IOException e) {
             LOG.debug(e);
             myErrorMessage = e.getMessage();
+            clean();
         } catch (ClassNotFoundException e) {
             LOG.debug(e);
             myErrorMessage = e.getMessage();
+            clean();
         } catch (NoSuchMethodException e) {
             LOG.error(e);
             myErrorMessage = "Cannot find factory method";
+            clean();
         } finally {
             try {
                 //noinspection ConstantConditions

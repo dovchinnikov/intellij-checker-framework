@@ -4,27 +4,27 @@ import com.intellij.openapi.components.ServiceManager
 import com.intellij.openapi.project.Project
 import com.intellij.psi.PsiClass
 import org.jetbrains.annotations.NotNull
+import org.jetbrains.annotations.Nullable
 
 import javax.tools.Diagnostic
 import javax.tools.JavaFileObject
 
-public class CompilerHolder implements CheckerFrameworkCompiler {
+public class CompilerHolder {
 
-    private Project myProject
-    private def     internal;
+    private @NotNull CheckerFrameworkSettings mySettings;
+    private @Nullable def internal;
 
     public CompilerHolder(Project project) {
-        myProject = project
+        mySettings = CheckerFrameworkSettings.getInstance(project);
     }
 
-    @NotNull
-    @Override
+    @Nullable
     public List<Diagnostic<? extends JavaFileObject>> getMessages(@NotNull PsiClass psiClass) {
-//        return Collections.emptyList();
-        if (internal == null) {
-            internal = CheckerFrameworkSettings.getInstance(myProject).createCompiler();
+        if (internal == null && mySettings.valid()) {
+            // try to create compiler
+            internal = mySettings.createCompiler();
         }
-        return internal == null ? Collections.emptyList() : internal.getMessages(psiClass);
+        return internal?.getMessages(psiClass);
     }
 
     public void reset() {

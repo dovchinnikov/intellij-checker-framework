@@ -27,15 +27,23 @@ public class AwesomeInspection extends BaseJavaBatchLocalInspectionTool {
     @Override
     public ProblemDescriptor[] checkClass(@NotNull PsiClass clazz, @NotNull InspectionManager manager, boolean isOnTheFly) {
         if (clazz.getQualifiedName() == null || clazz.getContainingClass() != null) {
+            // null when inner or anonymous class
             return null;
         }
+
         final Project project = manager.getProject();
+
         final CheckerFrameworkSettings settings = CheckerFrameworkSettings.getInstance(project);
         if (!settings.valid() || settings.getEnabledCheckers().isEmpty()) {
+            // settings are not valid or there are no configured checkers
             return null;
         }
+
         final List<Diagnostic<? extends JavaFileObject>> messages = CompilerHolder.getInstance(project).getMessages(clazz);
-        if (messages.isEmpty()) return null;
+        if (messages == null || messages.isEmpty()) {
+            return null;
+        }
+
         final CheckerFrameworkProblemDescriptorBuilder descriptorBuilder
             = CheckerFrameworkProblemDescriptorBuilder.getInstance(project);
         final Collection<ProblemDescriptor> problems = new ArrayList<ProblemDescriptor>();
