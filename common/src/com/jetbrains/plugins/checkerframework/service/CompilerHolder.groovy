@@ -3,7 +3,7 @@ package com.jetbrains.plugins.checkerframework.service
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.components.ServiceManager
 import com.intellij.openapi.project.Project
-import com.intellij.psi.PsiClass
+import com.intellij.psi.PsiJavaFile
 import org.jetbrains.annotations.NotNull
 import org.jetbrains.annotations.Nullable
 
@@ -37,8 +37,8 @@ public class CompilerHolder {
     }
 
     @Nullable
-    public List<Diagnostic<? extends JavaFileObject>> getMessages(@NotNull PsiClass psiClass) {
-        return implementation?.getMessages(psiClass);
+    public List<Diagnostic<? extends JavaFileObject>> getMessages(@NotNull PsiJavaFile psiJavaFile) {
+        return implementation?.getMessages(psiJavaFile);
     }
 
     public static CompilerHolder getInstance(Project project) {

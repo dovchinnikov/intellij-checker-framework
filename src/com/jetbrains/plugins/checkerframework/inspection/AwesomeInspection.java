@@ -5,7 +5,8 @@ import com.intellij.codeInspection.InspectionManager;
 import com.intellij.codeInspection.ProblemDescriptor;
 import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.project.Project;
-import com.intellij.psi.PsiClass;
+import com.intellij.psi.PsiFile;
+import com.intellij.psi.PsiJavaFile;
 import com.jetbrains.plugins.checkerframework.service.CheckerFrameworkProblemDescriptorBuilder;
 import com.jetbrains.plugins.checkerframework.service.CheckerFrameworkSettings;
 import com.jetbrains.plugins.checkerframework.service.CompilerHolder;
@@ -25,21 +26,18 @@ public class AwesomeInspection extends BaseJavaBatchLocalInspectionTool {
 
     @Nullable
     @Override
-    public ProblemDescriptor[] checkClass(@NotNull PsiClass clazz, @NotNull InspectionManager manager, boolean isOnTheFly) {
-        if (clazz.getQualifiedName() == null || clazz.getContainingClass() != null) {
-            // null when inner or anonymous class
-            return null;
-        }
+    public ProblemDescriptor[] checkFile(@NotNull PsiFile psiFile, @NotNull InspectionManager manager, boolean isOnTheFly) {
+        assert psiFile instanceof PsiJavaFile;
 
+        final PsiJavaFile javaFile = (PsiJavaFile) psiFile;
         final Project project = manager.getProject();
-
         final CheckerFrameworkSettings settings = CheckerFrameworkSettings.getInstance(project);
         if (!settings.valid() || settings.getEnabledCheckers().isEmpty()) {
             // settings are not valid or there are no configured checkers
             return null;
         }
 
-        final List<Diagnostic<? extends JavaFileObject>> messages = CompilerHolder.getInstance(project).getMessages(clazz);
+        final List<Diagnostic<? extends JavaFileObject>> messages = CompilerHolder.getInstance(project).getMessages(javaFile);
         if (messages == null || messages.isEmpty()) {
             return null;
         }
@@ -49,7 +47,7 @@ public class AwesomeInspection extends BaseJavaBatchLocalInspectionTool {
         final Collection<ProblemDescriptor> problems = new ArrayList<ProblemDescriptor>();
         for (final Diagnostic<? extends JavaFileObject> diagnostic : messages) {
             final ProblemDescriptor problemDescriptor = descriptorBuilder.buildProblemDescriptor(
-                clazz.getContainingFile(),
+                javaFile,
                 diagnostic,
                 isOnTheFly
             );

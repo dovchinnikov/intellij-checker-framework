@@ -7,8 +7,8 @@ import com.intellij.openapi.util.Computable;
 import com.intellij.openapi.util.Key;
 import com.intellij.psi.*;
 import com.jetbrains.plugins.checkerframework.tools.FilteringDiagnosticCollector;
-import com.jetbrains.plugins.checkerframework.tools.PsiClassJavaFileObject;
 import com.jetbrains.plugins.checkerframework.tools.PsiJavaFileManager;
+import com.jetbrains.plugins.checkerframework.tools.PsiJavaFileObject;
 import com.sun.source.util.Trees;
 import com.sun.tools.javac.api.JavacTool;
 import com.sun.tools.javac.code.Symtab;
@@ -55,6 +55,7 @@ public class CheckerFrameworkCompilerImpl extends PsiTreeChangeAdapter {
 
     private final FilteringDiagnosticCollector myDiagnosticCollector = new FilteringDiagnosticCollector();
     private final Set<PsiClass>                changedNames          = new HashSet<PsiClass>();
+    private final JavaFileManager       fileManager;
     private final Context               mySharedContext;
     private final AggregateCheckerEx    processor;
     private final ProcessingEnvironment environment;
@@ -72,10 +73,10 @@ public class CheckerFrameworkCompilerImpl extends PsiTreeChangeAdapter {
         System.out.println("Compiler instance creating start");
         long startTime = System.currentTimeMillis();
 
+        fileManager = new PsiJavaFileManager(FILE_MANAGER, project);
         mySharedContext = new Context();
         { // init context with own file manager
             mySharedContext.put(DiagnosticListener.class, myDiagnosticCollector);
-            final JavaFileManager fileManager = new PsiJavaFileManager(FILE_MANAGER, project);
             mySharedContext.put(JavaFileManager.class, fileManager);
             JavacTool.processOptions(mySharedContext, fileManager, compileOptions);
         }
@@ -105,20 +106,20 @@ public class CheckerFrameworkCompilerImpl extends PsiTreeChangeAdapter {
 
     @SuppressWarnings("UnusedDeclaration")
     @Nullable
-    public List<Diagnostic<? extends JavaFileObject>> getMessages(@NotNull final PsiClass psiClass) throws Exception {
+    public List<Diagnostic<? extends JavaFileObject>> getMessages(@NotNull final PsiJavaFile psiJavaFile) throws Exception {
         if (running.compareAndSet(true, true)) {
             return null;
         }
         for (final PsiClass aClass : changedNames) {
             clean(aClass);
         }
-        final Callable<ClassSymbol> classSymbolCompleter = new Completer(psiClass);
-        if (psiClass.getUserData(key) == null) {
-            psiClass.putUserData(key, true);
+        final Callable<ClassSymbol> classSymbolCompleter = new Completer(psiJavaFile);
+        if (psiJavaFile.getUserData(key) == null) {
+            psiJavaFile.putUserData(key, true);
             ApplicationManager.getApplication().executeOnPooledThread(classSymbolCompleter);
             return null;
         } else {
-            clean(psiClass);
+            clean(psiJavaFile);
             final ClassSymbol classSymbol = classSymbolCompleter.call();
             long start = System.currentTimeMillis();
             System.out.println("Processing " + classSymbol + " start");
@@ -146,15 +147,16 @@ public class CheckerFrameworkCompilerImpl extends PsiTreeChangeAdapter {
         );
     }
 
-    public void clean(PsiClass psiClass) {
+    public boolean clean(PsiClass psiClass) {
         final Name flatname = getFlatName(psiClass);
-        symtab.classes.remove(flatname);
+        final ClassSymbol old = symtab.classes.remove(flatname);
         check.compiled.remove(flatname);
         for (PsiClass inner : psiClass.getInnerClasses()) {
             if (psiClass.getQualifiedName() != null) {
                 clean(inner);
             }
         }
+        return old != null;
     }
 
     public void clean(PsiJavaFile javaFile) {
@@ -206,10 +208,10 @@ public class CheckerFrameworkCompilerImpl extends PsiTreeChangeAdapter {
 
     private class Completer implements Callable<ClassSymbol> {
 
-        private final PsiClass clazz;
+        private final PsiJavaFile myPsiJavaFile;
 
-        public Completer(PsiClass clazz) {
-            this.clazz = clazz;
+        private Completer(PsiJavaFile psiJavaFile) {
+            this.myPsiJavaFile = psiJavaFile;
         }
 
         @Override
@@ -220,9 +222,10 @@ public class CheckerFrameworkCompilerImpl extends PsiTreeChangeAdapter {
                 final ClassSymbol classSymbol = ApplicationManager.getApplication().runReadAction(new Computable<ClassSymbol>() {
                     @Override
                     public ClassSymbol compute() {
+                        final PsiJavaFileObject javaFileObject = new PsiJavaFileObject(myPsiJavaFile);
                         return ClassReader.instance(mySharedContext).enterClass(
-                            getFlatName(clazz),
-                            new PsiClassJavaFileObject(clazz)
+                            names.fromString(fileManager.inferBinaryName(null, javaFileObject)),
+                            javaFileObject
                         );
                     }
                 });

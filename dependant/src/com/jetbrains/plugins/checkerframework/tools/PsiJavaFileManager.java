@@ -6,10 +6,7 @@ import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.util.Computable;
 import com.intellij.openapi.vfs.VirtualFile;
-import com.intellij.psi.JavaPsiFacade;
-import com.intellij.psi.PsiClass;
-import com.intellij.psi.PsiDirectory;
-import com.intellij.psi.PsiPackage;
+import com.intellij.psi.*;
 import com.intellij.psi.search.GlobalSearchScope;
 import com.intellij.psi.search.ProjectScope;
 import org.jetbrains.annotations.NotNull;
@@ -18,6 +15,7 @@ import javax.tools.ForwardingJavaFileManager;
 import javax.tools.JavaFileObject;
 import javax.tools.StandardJavaFileManager;
 import javax.tools.StandardLocation;
+import java.io.File;
 import java.io.IOException;
 import java.util.Collections;
 import java.util.HashSet;
@@ -67,20 +65,14 @@ public class PsiJavaFileManager extends ForwardingJavaFileManager<StandardJavaFi
                     for (PsiDirectory directory : psiDirectories) {
                         for (VirtualFile file : directory.getVirtualFile().getChildren()) {
                             if (file.isDirectory() || !myLibraryClassFilesScope.contains(file)) continue;
-                            try {
-                                result.add(new VirtualJavaFileObject(file));
-                            } catch (IllegalArgumentException ignored) {
-                            }
+                            result.add(new VirtualJavaFileObject(file));
                         }
                     }
                 }
                 if (kinds.contains(JavaFileObject.Kind.SOURCE)) {
                     for (PsiClass psiClass : psiPackage.getClasses(mySourceScope)) {
                         if (mySourceJavaFilesScope.contains(psiClass.getContainingFile().getVirtualFile())) {
-                            try {
-                                result.add(new PsiClassJavaFileObject(psiClass));
-                            } catch (IllegalArgumentException ignored) {
-                            }
+                            result.add(new PsiJavaFileObject((PsiJavaFile) psiClass.getContainingFile()));
                         }
                     }
                 }
@@ -90,9 +82,31 @@ public class PsiJavaFileManager extends ForwardingJavaFileManager<StandardJavaFi
     }
 
     @Override
-    public String inferBinaryName(Location location, JavaFileObject file) {
-        if (file instanceof VirtualJavaFileObject || file instanceof PsiClassJavaFileObject) {
-            return file.getName();
+    public String inferBinaryName(Location location, final JavaFileObject file) {
+        if (file instanceof PsiJavaFileObject) {
+            return ApplicationManager.getApplication().runReadAction(new Computable<String>() {
+                @Override
+                public String compute() {
+                    final PsiJavaFile javaFile = ((PsiJavaFileObject) file).myJavaFile;
+                    final String packageName = javaFile.getPackageName();
+                    final String className = javaFile.getName().replace(".java", "");
+                    return packageName.isEmpty() ? className : packageName + "." + className;
+                }
+            });
+        } else if (file instanceof VirtualJavaFileObject) {
+            final VirtualFile virtualFile = ((VirtualJavaFileObject) file).myFile;
+            String rawPath = virtualFile.getPath();
+            int index = rawPath.indexOf('!');
+            if (index > -1) {
+                rawPath = rawPath.substring(index + 1);
+            }
+            if (rawPath.startsWith(File.separator)) {
+                rawPath = rawPath.substring(File.separator.length());
+            }
+            if (rawPath.endsWith(".class")) {
+                rawPath = rawPath.replace(".class", "");
+            }
+            return rawPath.replace(File.separatorChar, '.');
         } else {
             return super.inferBinaryName(location, file);
         }
