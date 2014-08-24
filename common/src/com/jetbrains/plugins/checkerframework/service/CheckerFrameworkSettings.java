@@ -4,9 +4,7 @@ import com.intellij.ide.plugins.cl.PluginClassLoader;
 import com.intellij.openapi.components.*;
 import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.project.Project;
-import com.intellij.openapi.util.Condition;
 import com.intellij.openapi.util.text.StringUtil;
-import com.intellij.util.containers.ContainerUtil;
 import com.intellij.util.lang.UrlClassLoader;
 import org.jetbrains.annotations.NonNls;
 import org.jetbrains.annotations.NotNull;
@@ -14,7 +12,6 @@ import org.jetbrains.annotations.NotNull;
 import java.io.File;
 import java.io.IOException;
 import java.lang.reflect.Constructor;
-import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Modifier;
 import java.net.URL;
 import java.util.*;
@@ -47,8 +44,7 @@ public class CheckerFrameworkSettings implements PersistentStateComponent<Checke
     private          boolean               needReload = true;
 
     private String      myErrorMessage;
-    private Constructor compilerConstructor;
-    private String      myPathToJavacJar;
+//    private String      myPathToJavacJar;
 
     @SuppressWarnings("UnusedDeclaration")
     public CheckerFrameworkSettings(@NotNull Project project) {
@@ -112,16 +108,21 @@ public class CheckerFrameworkSettings implements PersistentStateComponent<Checke
         return myState.options;
     }
 
-    @NotNull
-    public Object createCompiler() throws IllegalAccessException, InvocationTargetException, InstantiationException {
-        if (needReload) loadClasses();
-        assert valid() : "Not valid";
-        return compilerConstructor.newInstance(
-            myProject,
-            createCompileOptions(),
-            getEnabledCheckerClasses()
-        );
-    }
+//    @NotNull
+//    public Object createCompiler() throws IllegalAccessException, InvocationTargetException, InstantiationException {
+//        if (needReload) loadClasses();
+//        assert valid() : "Not valid";
+//        return ApplicationManager.getApplication().executeOnPooledThread(new Callable<Object>() {
+//            @Override
+//            public Object call() throws Exception {
+//                return compilerConstructor.newInstance(
+//                    myProject,
+//                    createCompileOptions(),
+//                    getEnabledCheckerClasses()
+//                );
+//            }
+//        });
+//    }
 
     @NotNull
     @Override
@@ -160,7 +161,7 @@ public class CheckerFrameworkSettings implements PersistentStateComponent<Checke
         myCheckerClasses.clear();
         myState.builtInCheckers.clear();
         myState.valid = false;
-        compilerConstructor = null;
+//        compilerConstructor = null;
     }
 
     private void loadClasses() {
@@ -220,7 +221,7 @@ public class CheckerFrameworkSettings implements PersistentStateComponent<Checke
                 }}, new ClassLoader[]{CURRENT_PLUGIN_CLASSLOADER}, CURRENT_PLUGIN_CLASSLOADER.getPluginId(), "CF", null
             );
             final Class<?> superClazz = jarClassLoader.loadClass(Stuff.CHECKERS_BASE_CLASS_FQN);
-
+            final List<Class<?>> enabledClasses = new ArrayList<Class<?>>();
             for (final JarEntry entry : Collections.list(jar.entries())) {
                 if (!entry.isDirectory() && entry.toString().endsWith(".class")) {
                     try {
@@ -240,6 +241,9 @@ public class CheckerFrameworkSettings implements PersistentStateComponent<Checke
                         if (!Modifier.isAbstract(clazz.getModifiers()) && !clazz.isAnonymousClass()) {
                             myCheckerClasses.add(clazz);
                             myState.builtInCheckers.add(clazz.getCanonicalName());
+                            if (myState.enabledCheckers.contains(clazz.getCanonicalName())) {
+                                enabledClasses.add(clazz);
+                            }
                         }
                     } catch (ClassNotFoundException e) {
                         LOG.error(e);
@@ -253,15 +257,20 @@ public class CheckerFrameworkSettings implements PersistentStateComponent<Checke
                 myState.builtInCheckers.add(checkerClass.getCanonicalName());
             }
 
-            compilerConstructor = jarClassLoader.loadClass(
+            final Constructor compilerConstructor = jarClassLoader.loadClass(
                 Stuff.COMPILER_IMPL_FQN
             ).getDeclaredConstructor(
                 Project.class, Collection.class, Collection.class
             );
 
+            CompilerHolder.getInstance(myProject).reset(
+                compilerConstructor,
+                createCompileOptions(),
+                enabledClasses
+            );
+
             myErrorMessage = null;
             myState.valid = true;
-            CompilerHolder.getInstance(myProject).reset();
         } catch (IOException e) {
             LOG.debug(e);
             myErrorMessage = e.getMessage();
@@ -292,23 +301,23 @@ public class CheckerFrameworkSettings implements PersistentStateComponent<Checke
         myCheckers.addAll(myState.customCheckers);
     }
 
-    @NotNull
-    private Set<Class> getEnabledCheckerClasses() {
-        if (needReload) loadClasses();
-        assert valid() : "Not valid";
-        final Set<Class> result = new HashSet<Class>(myCheckerClasses);
-        ContainerUtil.retainAll(
-            result, new Condition<Class>() {
-                @Override
-                public boolean value(Class aClass) {
-                    return myState.enabledCheckers.contains(aClass.getCanonicalName());
-                }
-            }
-        );
-        return result;
-    }
+//    @NotNull
+//    public Set<Class> getEnabledCheckerClasses() {
+//        if (needReload) loadClasses();
+//        assert valid() : "Not valid";
+//        final Set<Class> result = new HashSet<Class>(myCheckerClasses);
+//        ContainerUtil.retainAll(
+//            result, new Condition<Class>() {
+//                @Override
+//                public boolean value(Class aClass) {
+//                    return myState.enabledCheckers.contains(aClass.getCanonicalName());
+//                }
+//            }
+//        );
+//        return result;
+//    }
 
-    private List<String> createCompileOptions() {
+    public List<String> createCompileOptions() {
         return new ArrayList<String>(getOptions()) {{
 //            add("-Xbootclasspath:" + myPathToJavacJar/* + File.pathSeparator + myState.pathToCheckerJar*/);
             add("-cp");

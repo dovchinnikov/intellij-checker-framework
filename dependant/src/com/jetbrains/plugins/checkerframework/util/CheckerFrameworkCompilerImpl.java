@@ -1,16 +1,16 @@
 package com.jetbrains.plugins.checkerframework.util;
 
+import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.diagnostic.Logger;
-import com.intellij.openapi.progress.ProcessCanceledException;
 import com.intellij.openapi.project.Project;
-import com.intellij.psi.PsiClass;
+import com.intellij.openapi.util.Computable;
+import com.intellij.openapi.util.Key;
+import com.intellij.psi.*;
 import com.jetbrains.plugins.checkerframework.tools.FilteringDiagnosticCollector;
 import com.jetbrains.plugins.checkerframework.tools.PsiClassJavaFileObject;
 import com.jetbrains.plugins.checkerframework.tools.PsiJavaFileManager;
-import com.sun.source.util.TreePath;
 import com.sun.source.util.Trees;
 import com.sun.tools.javac.api.JavacTool;
-import com.sun.tools.javac.code.Symbol;
 import com.sun.tools.javac.code.Symtab;
 import com.sun.tools.javac.comp.AttrContext;
 import com.sun.tools.javac.comp.Check;
@@ -35,8 +35,15 @@ import java.util.Collection;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.Callable;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
+import java.util.concurrent.atomic.AtomicReference;
 
-public class CheckerFrameworkCompilerImpl {
+import static com.sun.tools.javac.code.Symbol.ClassSymbol;
+
+@SuppressWarnings("UseOfSystemOutOrSystemErr")
+public class CheckerFrameworkCompilerImpl extends PsiTreeChangeAdapter {
 
     private static final Logger                  LOG           = Logger.getInstance(CheckerFrameworkCompilerImpl.class);
     private static final JavacTool               JAVA_COMPILER = JavacTool.create();
@@ -46,23 +53,40 @@ public class CheckerFrameworkCompilerImpl {
         JavaParser.setCacheParser(false);
     }
 
-
-    private @NotNull final FilteringDiagnosticCollector myDiagnosticCollector = new FilteringDiagnosticCollector();
-    private @Nullable Context               mySharedContext;
-    private @Nullable ProcessingEnvironment environment;
-    private @NotNull  AggregateCheckerEx    processor;
+    private final FilteringDiagnosticCollector myDiagnosticCollector = new FilteringDiagnosticCollector();
+    private final Set<PsiClass>                changedNames          = new HashSet<PsiClass>();
+    private final Context               mySharedContext;
+    private final AggregateCheckerEx    processor;
+    private final ProcessingEnvironment environment;
+    private final JavaCompiler          compiler;
+    private final Check                 check;
+    private final Todo                  todo;
+    private final Names                 names;
+    private final Symtab                symtab;
+    private final Key<Boolean>             key     = Key.create("usedInSymtab");
+    private final AtomicReference<Boolean> running = new AtomicReference<Boolean>(false);
 
     public CheckerFrameworkCompilerImpl(final @NotNull Project project,
                                         final @NotNull Collection<String> compileOptions,
                                         final @NotNull Collection<Class<? extends Processor>> classes) {
-        //myProject = project;
+        System.out.println("Compiler instance creating start");
+        long startTime = System.currentTimeMillis();
+
         mySharedContext = new Context();
-        mySharedContext.put(DiagnosticListener.class, myDiagnosticCollector);
-        final JavaFileManager fileManager = new PsiJavaFileManager(FILE_MANAGER, project);
-        mySharedContext.put(JavaFileManager.class, fileManager);
-        JavacTool.processOptions(mySharedContext, fileManager, compileOptions);
-        Symtab.instance(mySharedContext);
+        { // init context with own file manager
+            mySharedContext.put(DiagnosticListener.class, myDiagnosticCollector);
+            final JavaFileManager fileManager = new PsiJavaFileManager(FILE_MANAGER, project);
+            mySharedContext.put(JavaFileManager.class, fileManager);
+            JavacTool.processOptions(mySharedContext, fileManager, compileOptions);
+        }
+        todo = Todo.instance(mySharedContext);
+        compiler = JavaCompiler.instance(mySharedContext);
+        names = Names.instance(mySharedContext);
+        symtab = Symtab.instance(mySharedContext);
+        check = Check.instance(mySharedContext);
         environment = JavacProcessingEnvironment.instance(mySharedContext);
+
+        // init processor
         processor = new AggregateCheckerEx() {
             @Override
             protected Collection<Class<? extends SourceChecker>> getSupportedCheckers() {
@@ -75,67 +99,145 @@ public class CheckerFrameworkCompilerImpl {
         };
         processor.setProcessingEnvironment(environment);
         processor.initChecker();
+        System.out.println("Compiler instance created, " + (System.currentTimeMillis() - startTime) + "ms elapsed");
+        PsiManager.getInstance(project).addPsiTreeChangeListener(this);
     }
 
     @SuppressWarnings("UnusedDeclaration")
     @Nullable
-    public List<Diagnostic<? extends JavaFileObject>> getMessages(@NotNull PsiClass psiClass) {
-        assert mySharedContext != null;
-
-        final Context context = mySharedContext;
-        final Todo todo = Todo.instance(context);
-        final Symtab symtab = Symtab.instance(context);
-
-        final Names names = Names.instance(context);
-        final Name name = names.fromString(psiClass.getQualifiedName());
-
-        clean(psiClass, context);
-
-        final Symbol.ClassSymbol classSymbol;
-        try {
-            // create new symbol
-            classSymbol = ClassReader.instance(context).enterClass(
-                name,
-                new PsiClassJavaFileObject(psiClass)
-            );
-            classSymbol.complete();
-        } catch (ProcessCanceledException e) {
-            clean(psiClass, context);
+    public List<Diagnostic<? extends JavaFileObject>> getMessages(@NotNull final PsiClass psiClass) throws Exception {
+        if (running.compareAndSet(true, true)) {
             return null;
         }
-
-        final JavaCompiler compiler = JavaCompiler.instance(context);
-        // attribute newly created symbol(s)
-        while (!todo.isEmpty()) {
-            final Env<AttrContext> current = todo.remove();
+        for (final PsiClass aClass : changedNames) {
+            clean(aClass);
+        }
+        final Callable<ClassSymbol> classSymbolCompleter = new Completer(psiClass);
+        if (psiClass.getUserData(key) == null) {
+            psiClass.putUserData(key, true);
+            ApplicationManager.getApplication().executeOnPooledThread(classSymbolCompleter);
+            return null;
+        } else {
+            clean(psiClass);
+            final ClassSymbol classSymbol = classSymbolCompleter.call();
+            long start = System.currentTimeMillis();
+            System.out.println("Processing " + classSymbol + " start");
             try {
-                compiler.flow(compiler.attribute(current));
-                final Name currentName = current.enclClass.type.asElement().getQualifiedName();
-                if (currentName == name) {
-                    final TreePath path = Trees.instance(environment).getPath(classSymbol);
-                    processor.typeProcess(classSymbol, path);
-                    break;
-                }
-            } catch (ProcessCanceledException ignored) {
-                clean(psiClass, context);
+                ApplicationManager.getApplication().executeOnPooledThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        processor.typeProcess(classSymbol, Trees.instance(environment).getPath(classSymbol));
+                    }
+                }).get(10000, TimeUnit.MILLISECONDS);
+            } catch (TimeoutException ignored) {
+                System.out.println("Processing " + classSymbol + " is too long");
                 return null;
             }
+            System.out.println("Processing " + classSymbol + " " + (System.currentTimeMillis() - start) + "ms elapsed");
+            return myDiagnosticCollector.getAndClear();
         }
-
-        LOG.debug(myDiagnosticCollector.getDiagnostics().size() + " diagnostics collected");
-        return myDiagnosticCollector.getAndClear();
     }
 
-    public static void clean(PsiClass psiClass, Context context) {
-        final Symtab symtab = Symtab.instance(context);
-        final Check check = Check.instance(context);
-        final Names names = Names.instance(context);
-        final Name name = names.fromString(psiClass.getQualifiedName());
-        symtab.classes.remove(name);
-        check.compiled.remove(name);
+    public Name getFlatName(PsiClass psiClass) {
+        return names.fromString(
+            psiClass.getContainingClass() == null
+                ? psiClass.getQualifiedName()
+                : psiClass.getContainingClass().getQualifiedName() + "$" + psiClass.getName()
+        );
+    }
+
+    public void clean(PsiClass psiClass) {
+        final Name flatname = getFlatName(psiClass);
+        symtab.classes.remove(flatname);
+        check.compiled.remove(flatname);
         for (PsiClass inner : psiClass.getInnerClasses()) {
-            check.compiled.remove(names.fromString(psiClass.getQualifiedName() + "$" + inner.getName()));
-            clean(inner, context);
+            if (psiClass.getQualifiedName() != null) {
+                clean(inner);
+            }
+        }
+    }
+
+    public void clean(PsiJavaFile javaFile) {
+        synchronized (changedNames) {
+            for (PsiClass psiClass : javaFile.getClasses()) {
+                if (running.compareAndSet(true, true)) {
+                    changedNames.add(psiClass);
+                } else {
+                    clean(psiClass);
+                }
+            }
+        }
+    }
+
+    public void clean(PsiFile file) {
+        if (file instanceof PsiJavaFile) {
+            clean((PsiJavaFile) file);
+        }
+    }
+
+    private void clean(PsiTreeChangeEvent event) {
+        clean(event.getFile());
+    }
+
+    @Override
+    public void childAdded(@NotNull PsiTreeChangeEvent event) {
+        clean(event);
+    }
+
+    @Override
+    public void childRemoved(@NotNull PsiTreeChangeEvent event) {
+        clean(event);
+    }
+
+    @Override
+    public void childReplaced(@NotNull PsiTreeChangeEvent event) {
+        clean(event);
+    }
+
+    @Override
+    public void childMoved(@NotNull PsiTreeChangeEvent event) {
+        clean(event);
+    }
+
+    @Override
+    public void childrenChanged(@NotNull PsiTreeChangeEvent event) {
+        clean(event);
+    }
+
+    private class Completer implements Callable<ClassSymbol> {
+
+        private final PsiClass clazz;
+
+        public Completer(PsiClass clazz) {
+            this.clazz = clazz;
+        }
+
+        @Override
+        public ClassSymbol call() throws Exception {
+            long start = System.currentTimeMillis();
+            try {
+                running.set(true);
+                final ClassSymbol classSymbol = ApplicationManager.getApplication().runReadAction(new Computable<ClassSymbol>() {
+                    @Override
+                    public ClassSymbol compute() {
+                        return ClassReader.instance(mySharedContext).enterClass(
+                            getFlatName(clazz),
+                            new PsiClassJavaFileObject(clazz)
+                        );
+                    }
+                });
+                classSymbol.complete();
+                while (!todo.isEmpty()) {
+                    final Env<AttrContext> current = todo.remove();
+                    synchronized (todo) {
+                        compiler.flow(compiler.attribute(current));
+                    }
+                }
+                return classSymbol;
+            } finally {
+                System.out.println(System.currentTimeMillis() - start + "ms elapsed");
+                running.set(false);
+            }
         }
     }
 

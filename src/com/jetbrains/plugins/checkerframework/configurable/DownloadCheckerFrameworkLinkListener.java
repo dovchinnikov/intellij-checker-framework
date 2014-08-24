@@ -38,7 +38,7 @@ public class DownloadCheckerFrameworkLinkListener implements HyperlinkListener {
 
     /**
      * @param rootPane              parent component for the progress window.
-     * @param pathToCheckerJarField field to set path to.
+     * @param pathToCheckerJarField field to reset path to.
      */
     public DownloadCheckerFrameworkLinkListener(final JComponent rootPane, final TextAccessor pathToCheckerJarField) {
         myRootPane = rootPane;
