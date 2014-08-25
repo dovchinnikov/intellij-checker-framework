@@ -36,6 +36,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.Callable;
+import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicReference;
@@ -48,13 +49,14 @@ public class CheckerFrameworkCompilerImpl extends PsiTreeChangeAdapter {
     private static final Logger                  LOG           = Logger.getInstance(CheckerFrameworkCompilerImpl.class);
     private static final JavacTool               JAVA_COMPILER = JavacTool.create();
     private static final StandardJavaFileManager FILE_MANAGER  = JAVA_COMPILER.getStandardFileManager(null, null, null);
+    private static final Key<Boolean>            KEY           = Key.create("usedInSymtab");
 
     static {
         JavaParser.setCacheParser(false);
     }
 
     private final FilteringDiagnosticCollector myDiagnosticCollector = new FilteringDiagnosticCollector();
-    private final Set<PsiClass>                changedNames          = new HashSet<PsiClass>();
+    private final Set<PsiJavaFile>             myChangedFiles        = new HashSet<PsiJavaFile>();
     private final JavaFileManager       fileManager;
     private final Context               mySharedContext;
     private final AggregateCheckerEx    processor;
@@ -64,7 +66,7 @@ public class CheckerFrameworkCompilerImpl extends PsiTreeChangeAdapter {
     private final Todo                  todo;
     private final Names                 names;
     private final Symtab                symtab;
-    private final Key<Boolean>             key     = Key.create("usedInSymtab");
+    private final ClassReader           myClassReader;
     private final AtomicReference<Boolean> running = new AtomicReference<Boolean>(false);
 
     public CheckerFrameworkCompilerImpl(final @NotNull Project project,
@@ -86,6 +88,7 @@ public class CheckerFrameworkCompilerImpl extends PsiTreeChangeAdapter {
         symtab = Symtab.instance(mySharedContext);
         check = Check.instance(mySharedContext);
         environment = JavacProcessingEnvironment.instance(mySharedContext);
+        myClassReader = ClassReader.instance(mySharedContext);
 
         // init processor
         processor = new AggregateCheckerEx() {
@@ -110,27 +113,36 @@ public class CheckerFrameworkCompilerImpl extends PsiTreeChangeAdapter {
         if (running.compareAndSet(true, true)) {
             return null;
         }
-        for (final PsiClass aClass : changedNames) {
-            clean(aClass);
+        {   // remove & reenter changed files
+            for (final PsiJavaFile javaFile : myChangedFiles) {
+                clean(javaFile);
+                final PsiJavaFileObject javaFileObject = new PsiJavaFileObject(javaFile);
+                myClassReader.enterClass(
+                    names.fromString(fileManager.inferBinaryName(null, javaFileObject)),
+                    javaFileObject
+                );
+            }
+            myChangedFiles.clear();
         }
         final Callable<ClassSymbol> classSymbolCompleter = new Completer(psiJavaFile);
-        if (psiJavaFile.getUserData(key) == null) {
-            psiJavaFile.putUserData(key, true);
+        if (psiJavaFile.getUserData(KEY) == null) {
+            psiJavaFile.putUserData(KEY, true);
             ApplicationManager.getApplication().executeOnPooledThread(classSymbolCompleter);
             return null;
         } else {
-            clean(psiJavaFile);
             final ClassSymbol classSymbol = classSymbolCompleter.call();
             long start = System.currentTimeMillis();
             System.out.println("Processing " + classSymbol + " start");
+            Future future = ApplicationManager.getApplication().executeOnPooledThread(new Runnable() {
+                @Override
+                public void run() {
+                    processor.typeProcess(classSymbol, Trees.instance(environment).getPath(classSymbol));
+                }
+            });
             try {
-                ApplicationManager.getApplication().executeOnPooledThread(new Runnable() {
-                    @Override
-                    public void run() {
-                        processor.typeProcess(classSymbol, Trees.instance(environment).getPath(classSymbol));
-                    }
-                }).get(10000, TimeUnit.MILLISECONDS);
+                future.get(1000, TimeUnit.MILLISECONDS);
             } catch (TimeoutException ignored) {
+                future.cancel(true);
                 System.out.println("Processing " + classSymbol + " is too long");
                 return null;
             }
@@ -160,50 +172,44 @@ public class CheckerFrameworkCompilerImpl extends PsiTreeChangeAdapter {
     }
 
     public void clean(PsiJavaFile javaFile) {
-        synchronized (changedNames) {
-            for (PsiClass psiClass : javaFile.getClasses()) {
-                if (running.compareAndSet(true, true)) {
-                    changedNames.add(psiClass);
-                } else {
-                    clean(psiClass);
-                }
-            }
+        for (PsiClass psiClass : javaFile.getClasses()) {
+            clean(psiClass);
         }
     }
 
-    public void clean(PsiFile file) {
+    private void cleanLater(PsiFile file) {
         if (file instanceof PsiJavaFile) {
-            clean((PsiJavaFile) file);
+            myChangedFiles.add((PsiJavaFile) file);
         }
     }
 
-    private void clean(PsiTreeChangeEvent event) {
-        clean(event.getFile());
+    private void cleanLater(PsiTreeChangeEvent event) {
+        cleanLater(event.getFile());
     }
 
     @Override
     public void childAdded(@NotNull PsiTreeChangeEvent event) {
-        clean(event);
+        cleanLater(event);
     }
 
     @Override
     public void childRemoved(@NotNull PsiTreeChangeEvent event) {
-        clean(event);
+        cleanLater(event);
     }
 
     @Override
     public void childReplaced(@NotNull PsiTreeChangeEvent event) {
-        clean(event);
+        cleanLater(event);
     }
 
     @Override
     public void childMoved(@NotNull PsiTreeChangeEvent event) {
-        clean(event);
+        cleanLater(event);
     }
 
     @Override
     public void childrenChanged(@NotNull PsiTreeChangeEvent event) {
-        clean(event);
+        cleanLater(event);
     }
 
     private class Completer implements Callable<ClassSymbol> {
@@ -222,6 +228,7 @@ public class CheckerFrameworkCompilerImpl extends PsiTreeChangeAdapter {
                 final ClassSymbol classSymbol = ApplicationManager.getApplication().runReadAction(new Computable<ClassSymbol>() {
                     @Override
                     public ClassSymbol compute() {
+                        clean(myPsiJavaFile);
                         final PsiJavaFileObject javaFileObject = new PsiJavaFileObject(myPsiJavaFile);
                         return ClassReader.instance(mySharedContext).enterClass(
                             names.fromString(fileManager.inferBinaryName(null, javaFileObject)),
