@@ -1,24 +1,37 @@
 package com.jetbrains.plugins.checkerframework.configurable;
 
 import com.intellij.util.ui.EditableModel;
-import com.jetbrains.plugins.checkerframework.service.CheckerFrameworkSettings;
 import org.jetbrains.annotations.NotNull;
 
 import javax.swing.table.AbstractTableModel;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.List;
 
 public class OptionsTableModel extends AbstractTableModel implements EditableModel {
 
-    private final @NotNull CheckerFrameworkSettings mySettings;
+    private final List<String> myOptions;
 
-    public OptionsTableModel(@NotNull CheckerFrameworkSettings settings) {
-        mySettings = settings;
+    public OptionsTableModel(final List<String> options) {
+        this.myOptions = new ArrayList<String>(options);
     }
 
+    public List<String> getOptions() {
+        return myOptions;
+    }
+
+    public void setOptions(Collection<String> options) {
+        myOptions.clear();
+        myOptions.addAll(options);
+    }
+
+    @NotNull
     @Override
     public String getColumnName(int column) {
         return "Option";
     }
 
+    @NotNull
     @Override
     public Class<String> getColumnClass(int columnIndex) {
         return String.class;
@@ -26,7 +39,7 @@ public class OptionsTableModel extends AbstractTableModel implements EditableMod
 
     @Override
     public int getRowCount() {
-        return mySettings.getOptions().size();
+        return myOptions.size();
     }
 
     @Override
@@ -41,24 +54,25 @@ public class OptionsTableModel extends AbstractTableModel implements EditableMod
 
     @Override
     public Object getValueAt(int rowIndex, int columnIndex) {
-        return mySettings.getOptions().get(rowIndex);
+        return myOptions.get(rowIndex);
     }
 
     @Override
     public void setValueAt(Object aValue, int rowIndex, int columnIndex) {
-        mySettings.getOptions().set(rowIndex, String.valueOf(aValue));
+        assert columnIndex == 0;
+        myOptions.set(rowIndex, String.valueOf(aValue));
     }
 
     @Override
     public void addRow() {
-        mySettings.getOptions().add("");
-        final int index = mySettings.getOptions().size() - 1;
+        myOptions.add("");
+        final int index = myOptions.size() - 1;
         fireTableRowsInserted(index, index);
     }
 
     @Override
     public void removeRow(int idx) {
-        mySettings.getOptions().remove(idx);
+        myOptions.remove(idx);
         fireTableRowsDeleted(idx, idx);
     }
 

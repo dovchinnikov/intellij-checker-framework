@@ -10,51 +10,54 @@ import org.jetbrains.annotations.Nullable;
 
 import javax.swing.*;
 
+import static com.jetbrains.plugins.checkerframework.service.CheckerFrameworkState.collectionEquals;
+
 public class CheckerFrameworkConfigurable implements Configurable {
 
-    private final CheckerFrameworkSettings       myOriginalSettings;
-    private final CheckerFrameworkSettings       mySettings;
-    private final CheckerFrameworkConfigurableUI myUI;
+    private final @NotNull CheckerFrameworkSettings       mySettings;
+    private @Nullable      CheckerFrameworkConfigurableUI myUI;
 
     public CheckerFrameworkConfigurable(final @NotNull Project project) {
-        myOriginalSettings = CheckerFrameworkSettings.getInstance(project);
-        mySettings = new CheckerFrameworkSettings(myOriginalSettings);
-        myUI = new CheckerFrameworkConfigurableUI(project, mySettings);
+        mySettings = CheckerFrameworkSettings.getInstance(project);
     }
 
     @Nls
     @Override
-    public String getDisplayName() {
+    public @NotNull String getDisplayName() {
         return "Checker Framework";
     }
 
-    @Nullable
     @Override
-    public String getHelpTopic() {
+    public @Nullable String getHelpTopic() {
         return null;
     }
 
-    @Nullable
     @Override
-    public JComponent createComponent() {
+    public @Nullable JComponent createComponent() {
+        if (myUI == null) {
+            myUI = new CheckerFrameworkConfigurableUI(mySettings);
+        }
         return myUI.getRoot();
     }
 
     @Override
     public boolean isModified() {
-        return !(myOriginalSettings.equals(mySettings));
+        assert myUI != null;
+        return !collectionEquals(mySettings.getEnabledCheckerClasses(), myUI.getConfiguredEnabledCheckers())
+            || !collectionEquals(mySettings.getOptions(), myUI.getConfiguredOptions());
     }
 
     @Override
     public void apply() throws ConfigurationException {
-        mySettings.getEnabledCheckers().retainAll(mySettings.getCheckers());
-        myOriginalSettings.loadState(mySettings.getState());
+        assert myUI != null;
+        mySettings.setEnabledCheckerClasses(myUI.getConfiguredEnabledCheckers());
+        mySettings.setOptions(myUI.getConfiguredOptions());
     }
 
     @Override
     public void reset() {
-        mySettings.loadState(myOriginalSettings.getState());
-        myUI.reset();
+        assert myUI != null;
+        myUI.reset(mySettings);
     }
 
     @Override

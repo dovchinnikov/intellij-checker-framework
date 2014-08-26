@@ -32,7 +32,7 @@ public class AwesomeInspection extends BaseJavaBatchLocalInspectionTool {
         final PsiJavaFile javaFile = (PsiJavaFile) psiFile;
         final Project project = manager.getProject();
         final CheckerFrameworkSettings settings = CheckerFrameworkSettings.getInstance(project);
-        if (!settings.valid() || settings.getEnabledCheckers().isEmpty()) {
+        if (settings.getEnabledCheckerClasses().isEmpty()) {
             // settings are not valid or there are no configured checkers
             return null;
         }
