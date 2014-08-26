@@ -29,7 +29,6 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import javax.annotation.processing.ProcessingEnvironment;
-import javax.annotation.processing.Processor;
 import javax.tools.*;
 import java.util.Collection;
 import java.util.HashSet;
@@ -46,6 +45,7 @@ import static com.sun.tools.javac.code.Symbol.ClassSymbol;
 @SuppressWarnings("UseOfSystemOutOrSystemErr")
 public class CheckerFrameworkCompilerImpl extends PsiTreeChangeAdapter {
 
+    @SuppressWarnings("UnusedDeclaration")
     private static final Logger                  LOG           = Logger.getInstance(CheckerFrameworkCompilerImpl.class);
     private static final JavacTool               JAVA_COMPILER = JavacTool.create();
     private static final StandardJavaFileManager FILE_MANAGER  = JAVA_COMPILER.getStandardFileManager(null, null, null);
@@ -71,7 +71,7 @@ public class CheckerFrameworkCompilerImpl extends PsiTreeChangeAdapter {
 
     public CheckerFrameworkCompilerImpl(final @NotNull Project project,
                                         final @NotNull Collection<String> compileOptions,
-                                        final @NotNull Collection<Class<? extends Processor>> classes) {
+                                        final @NotNull Collection<Class<? extends SourceChecker>> classes) {
         System.out.println("Compiler instance creating start");
         long startTime = System.currentTimeMillis();
 
@@ -94,11 +94,7 @@ public class CheckerFrameworkCompilerImpl extends PsiTreeChangeAdapter {
         processor = new AggregateCheckerEx() {
             @Override
             protected Collection<Class<? extends SourceChecker>> getSupportedCheckers() {
-                final Set<Class<? extends SourceChecker>> myClasses = new HashSet<Class<? extends SourceChecker>>();
-                for (Class<?> clazz : classes) {
-                    myClasses.add(clazz.asSubclass(SourceChecker.class));
-                }
-                return myClasses;
+                return classes;
             }
         };
         processor.setProcessingEnvironment(environment);

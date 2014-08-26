@@ -8,6 +8,7 @@ import org.jetbrains.annotations.NotNull;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.LinkedHashSet;
 import java.util.List;
 
 import static com.jetbrains.plugins.checkerframework.service.CheckerFrameworkSettings.CONFIG_PATH;
@@ -100,8 +101,12 @@ public class CheckerFrameworkSettings implements PersistentStateComponent<Checke
         myEnabledCheckerClasses.addAll(checkerClasses);
     }
 
-    public @NotNull List<String> getOptions() {
-        return myOptions;
+    public @NotNull Collection<String> getOptions() {
+        return new LinkedHashSet<String>(myOptions) {{
+            add("-cp");
+            add(Stuff.PATH_TO_CHECKER);
+            add("-Adetailedmsgtext");
+        }};
     }
 
     public void setOptions(@NotNull Collection<String> options) {

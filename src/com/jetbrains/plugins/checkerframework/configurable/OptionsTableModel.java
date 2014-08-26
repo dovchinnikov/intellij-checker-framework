@@ -12,7 +12,7 @@ public class OptionsTableModel extends AbstractTableModel implements EditableMod
 
     private final List<String> myOptions;
 
-    public OptionsTableModel(final List<String> options) {
+    public OptionsTableModel(final Collection<String> options) {
         this.myOptions = new ArrayList<String>(options);
     }
 

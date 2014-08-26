@@ -24,8 +24,8 @@ public class CompilerHolder {
     }
 
     public void reset(def ... stuff) {
-        List<String> compileOptions;
-        List<Class<? extends SourceChecker>> classes;
+        final Collection<String> compileOptions;
+        final Collection<Class<? extends SourceChecker>> classes;
         (compileOptions, classes) = stuff;
         implementation = null;
         ApplicationManager.application.executeOnPooledThread({
