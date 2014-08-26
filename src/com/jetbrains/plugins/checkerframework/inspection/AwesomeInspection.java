@@ -37,7 +37,7 @@ public class AwesomeInspection extends BaseJavaBatchLocalInspectionTool {
             return null;
         }
 
-        final List<Diagnostic<? extends JavaFileObject>> messages = CompilerHolder.getInstance(project).getMessages(javaFile);
+        final List<Diagnostic<? extends JavaFileObject>> messages = CompilerHolder.getInstance(project).getMessages(javaFile, isOnTheFly);
         if (messages == null || messages.isEmpty()) {
             return null;
         }

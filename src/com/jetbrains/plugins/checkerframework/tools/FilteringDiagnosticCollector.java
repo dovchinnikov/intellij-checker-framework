@@ -1,8 +1,11 @@
 package com.jetbrains.plugins.checkerframework.tools;
 
-import javax.tools.*;
+import javax.tools.Diagnostic;
+import javax.tools.DiagnosticListener;
+import javax.tools.JavaFileObject;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 
 /**
  * This class filters non-processor diagnostic messages from Java Compiler.
@@ -13,16 +16,9 @@ public class FilteringDiagnosticCollector implements DiagnosticListener<JavaFile
 
     private final List<Diagnostic<? extends JavaFileObject>> myDiagnostics = new ArrayList<Diagnostic<? extends JavaFileObject>>();
 
-    public List<Diagnostic<? extends JavaFileObject>> getDiagnostics() {
-        return myDiagnostics;
-    }
-
     @Override
     public void report(Diagnostic<? extends JavaFileObject> diagnostic) {
-        if (diagnostic.getKind() == Diagnostic.Kind.ERROR) {
-            System.out.println(diagnostic);
-        }
-        if (PROC_CODE.equals(diagnostic.getCode())) {
+        if (PROC_CODE.equals(diagnostic.getCode()) && !diagnostic.getMessage(Locale.getDefault()).contains("EnoughException")) {
             myDiagnostics.add(diagnostic);
         }
     }

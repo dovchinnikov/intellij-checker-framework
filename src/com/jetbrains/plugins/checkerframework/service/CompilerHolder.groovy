@@ -4,7 +4,7 @@ import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.components.ServiceManager
 import com.intellij.openapi.project.Project
 import com.intellij.psi.PsiJavaFile
-import com.jetbrains.plugins.checkerframework.util.CheckerFrameworkCompilerImpl
+import com.jetbrains.plugins.checkerframework.util.CheckerFrameworkSharedCompiler
 import org.checkerframework.framework.source.SourceChecker
 import org.jetbrains.annotations.NotNull
 import org.jetbrains.annotations.Nullable
@@ -14,8 +14,8 @@ import javax.tools.JavaFileObject
 
 public class CompilerHolder {
 
-    private Project                      myProject
-    private CheckerFrameworkCompilerImpl implementation
+    private Project                        myProject
+    private CheckerFrameworkSharedCompiler implementation
 
     public CompilerHolder(Project project) {
         myProject = project;
@@ -29,7 +29,7 @@ public class CompilerHolder {
         (compileOptions, classes) = stuff;
         implementation = null;
         ApplicationManager.application.executeOnPooledThread({
-            implementation = new CheckerFrameworkCompilerImpl(
+            implementation = new CheckerFrameworkSharedCompiler(
                 myProject,
                 compileOptions,
                 classes
@@ -38,8 +38,9 @@ public class CompilerHolder {
     }
 
     @Nullable
-    public List<Diagnostic<? extends JavaFileObject>> getMessages(@NotNull PsiJavaFile psiJavaFile) {
-        return implementation?.getMessages(psiJavaFile);
+    public List<Diagnostic<? extends JavaFileObject>> getMessages(
+        @NotNull PsiJavaFile psiJavaFile, boolean isOnTheFly) {
+        return implementation?.getMessages(psiJavaFile, isOnTheFly);
     }
 
     public static CompilerHolder getInstance(Project project) {
