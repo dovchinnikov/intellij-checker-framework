@@ -8,6 +8,26 @@
 
     <depends>com.intellij.modules.platform</depends>
 
+    <actions>
+        <group
+            id="CheckerFramework.AnalyzeMenu"
+            text="Checker Framework"
+            popup="true"
+            icon="/logo_light.png">
+            <add-to-group group-id="AnalyzeMenu" anchor="last"/>
+            <action id="CheckerFramework.runCurrentFile"
+                    class="com.jetbrains.plugins.checkerframework.action.RunForScopeAction$RunForCurrentFile"
+                    text="Run checkers for current file"/>
+            <action id="CheckerFramework.runCurrentModule"
+                    class="com.jetbrains.plugins.checkerframework.action.RunForScopeAction$RunForCurrentModule"
+                    text="Run checkers for current module"/>
+            <action id="CheckerFramework.runCurrentProject"
+                    class="com.jetbrains.plugins.checkerframework.action.RunForScopeAction$RunForCurrentProject"
+                    text="Run checkers for current project"/>
+        </group>
+
+    </actions>
+
     <extensions defaultExtensionNs="com.intellij">
         <projectService serviceImplementation="com.jetbrains.plugins.checkerframework.service.CheckerFrameworkSettings"/>
         <projectService serviceImplementation="com.jetbrains.plugins.checkerframework.util.CheckerFrameworkSharedCompiler"/>
