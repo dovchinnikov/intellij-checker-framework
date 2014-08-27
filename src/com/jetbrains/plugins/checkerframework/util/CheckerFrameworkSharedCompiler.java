@@ -241,7 +241,7 @@ public class CheckerFrameworkSharedCompiler extends PsiTreeChangeAdapter {
         @Override
         public List<ClassSymbol> call() throws Exception {
             long start = System.currentTimeMillis();
-            List<ClassSymbol> result = new ArrayList<ClassSymbol>();
+
             try {
                 processingRunning.set(true);
                 final ClassSymbol classSymbol = ApplicationManager.getApplication().runReadAction(new Computable<ClassSymbol>() {
@@ -262,15 +262,18 @@ public class CheckerFrameworkSharedCompiler extends PsiTreeChangeAdapter {
                         compiler.flow(compiler.attribute(current));
                     }
                 }
-                for (final PsiClass psiClass : myPsiJavaFile.getClasses()) {
-                    final Name name = ApplicationManager.getApplication().runReadAction(new Computable<Name>() {
-                        @Override public Name compute() {
-                            return getFlatName(psiClass);
+
+                return ApplicationManager.getApplication().runReadAction(new Computable<List<ClassSymbol>>() {
+                    @Override
+                    public List<ClassSymbol> compute() {
+                        final List<ClassSymbol> result = new ArrayList<ClassSymbol>();
+                        for (final PsiClass psiClass : myPsiJavaFile.getClasses()) {
+                            final Name name = getFlatName(psiClass);
+                            result.add(symtab.classes.get(name));
                         }
-                    });
-                    result.add(symtab.classes.get(name));
-                }
-                return result;
+                        return result;
+                    }
+                });
             } finally {
                 System.out.println(System.currentTimeMillis() - start + "ms elapsed");
                 processingRunning.set(false);
