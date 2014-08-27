@@ -29,10 +29,7 @@ import org.jetbrains.annotations.Nullable;
 
 import javax.annotation.processing.ProcessingEnvironment;
 import javax.tools.*;
-import java.util.Collection;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -120,27 +117,30 @@ public class CheckerFrameworkSharedCompiler extends PsiTreeChangeAdapter {
             }
             myChangedFiles.clear();
         }
-        final Callable<ClassSymbol> classSymbolCompleter = new Completer(psiJavaFile);
+        final Callable<List<ClassSymbol>> classSymbolCompleter = new Completer(psiJavaFile);
         if (psiJavaFile.getUserData(KEY) != null || !isOnTheFly) {
-            final ClassSymbol classSymbol;
+            final List<ClassSymbol> classSymbols;
             try {
-                classSymbol = classSymbolCompleter.call();
+                classSymbols = classSymbolCompleter.call();
             } catch (Exception e) {
                 LOG.error(e);
                 return null;
             }
             final Future future = ApplicationManager.getApplication().executeOnPooledThread(new Runnable() {
-                @Override public void run() {
-                    long start = System.currentTimeMillis();
-                    try {
-                        System.out.println("Processing " + classSymbol + " start");
-                        synchronized (processingRunning) {
-                            processor.typeProcess(classSymbol, Trees.instance(environment).getPath(classSymbol));
+                @Override
+                public void run() {
+                    for (ClassSymbol classSymbol : classSymbols) {
+                        long start = System.currentTimeMillis();
+                        try {
+                            System.out.println("Processing " + classSymbol + " start");
+                            synchronized (processingRunning) {
+                                processor.typeProcess(classSymbol, Trees.instance(environment).getPath(classSymbol));
+                            }
+                        } catch (EnoughException e) {
+                            LOG.debug(e);
+                        } finally {
+                            System.out.println("Processing " + classSymbol + " " + (System.currentTimeMillis() - start) + "ms elapsed");
                         }
-                    } catch (EnoughException e) {
-                        LOG.debug(e);
-                    } finally {
-                        System.out.println("Processing " + classSymbol + " " + (System.currentTimeMillis() - start) + "ms elapsed");
                     }
                 }
             });
@@ -230,7 +230,7 @@ public class CheckerFrameworkSharedCompiler extends PsiTreeChangeAdapter {
         cleanLater(event);
     }
 
-    private class Completer implements Callable<ClassSymbol> {
+    private class Completer implements Callable<List<ClassSymbol>> {
 
         private final PsiJavaFile myPsiJavaFile;
 
@@ -239,8 +239,9 @@ public class CheckerFrameworkSharedCompiler extends PsiTreeChangeAdapter {
         }
 
         @Override
-        public ClassSymbol call() throws Exception {
+        public List<ClassSymbol> call() throws Exception {
             long start = System.currentTimeMillis();
+            List<ClassSymbol> result = new ArrayList<ClassSymbol>();
             try {
                 processingRunning.set(true);
                 final ClassSymbol classSymbol = ApplicationManager.getApplication().runReadAction(new Computable<ClassSymbol>() {
@@ -261,7 +262,15 @@ public class CheckerFrameworkSharedCompiler extends PsiTreeChangeAdapter {
                         compiler.flow(compiler.attribute(current));
                     }
                 }
-                return classSymbol;
+                for (final PsiClass psiClass : myPsiJavaFile.getClasses()) {
+                    final Name name = ApplicationManager.getApplication().runReadAction(new Computable<Name>() {
+                        @Override public Name compute() {
+                            return getFlatName(psiClass);
+                        }
+                    });
+                    result.add(symtab.classes.get(name));
+                }
+                return result;
             } finally {
                 System.out.println(System.currentTimeMillis() - start + "ms elapsed");
                 processingRunning.set(false);
