@@ -39,6 +39,12 @@ public abstract class RunForScopeAction extends AnAction {
             assert currentFile != null;
             return new AnalysisScope(currentFile);
         }
+
+        @Override
+        public void update(AnActionEvent e) {
+            final PsiFile file = e.getData(CommonDataKeys.PSI_FILE);
+            e.getPresentation().setEnabled(file != null && file.getLanguage().is(JavaLanguage.INSTANCE));
+        }
     }
 
     public static class RunForCurrentModule extends RunForScopeAction {
