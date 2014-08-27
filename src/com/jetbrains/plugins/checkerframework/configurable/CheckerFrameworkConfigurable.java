@@ -4,6 +4,7 @@ import com.intellij.openapi.options.Configurable;
 import com.intellij.openapi.options.ConfigurationException;
 import com.intellij.openapi.project.Project;
 import com.jetbrains.plugins.checkerframework.service.CheckerFrameworkSettings;
+import com.jetbrains.plugins.checkerframework.service.CompilerHolder;
 import org.jetbrains.annotations.Nls;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -14,10 +15,12 @@ import static com.jetbrains.plugins.checkerframework.service.CheckerFrameworkSta
 
 public class CheckerFrameworkConfigurable implements Configurable {
 
+    private final @NotNull Project                        myProject;
     private final @NotNull CheckerFrameworkSettings       mySettings;
     private @Nullable      CheckerFrameworkConfigurableUI myUI;
 
     public CheckerFrameworkConfigurable(final @NotNull Project project) {
+        myProject = project;
         mySettings = CheckerFrameworkSettings.getInstance(project);
     }
 
@@ -52,6 +55,7 @@ public class CheckerFrameworkConfigurable implements Configurable {
         assert myUI != null;
         mySettings.setEnabledCheckerClasses(myUI.getConfiguredEnabledCheckers());
         mySettings.setOptions(myUI.getConfiguredOptions());
+        CompilerHolder.getInstance(myProject).resetAsync();
     }
 
     @Override

@@ -16,6 +16,7 @@ import com.intellij.openapi.project.Project;
 import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.psi.PsiFile;
 import com.jetbrains.plugins.checkerframework.inspection.AwesomeInspection;
+import com.jetbrains.plugins.checkerframework.service.CompilerHolder;
 import org.jetbrains.annotations.NotNull;
 
 @SuppressWarnings("ComponentNotRegistered")
@@ -23,6 +24,11 @@ public abstract class RunForScopeAction extends AnAction {
 
     @Override
     public void actionPerformed(AnActionEvent e) {
+        {   // reset compiler (symtab, processor caches, etc)
+            final Project project = e.getProject();
+            assert project != null;
+            CompilerHolder.getInstance(project).resetSync();
+        }
         final InspectionToolWrapper toolWrapper = new LocalInspectionToolWrapper(new AwesomeInspection());
         final InspectionManagerEx inspectionManagerEx = (InspectionManagerEx) InspectionManager.getInstance(e.getProject());
         final AnalysisScope scope = getScope(e);
