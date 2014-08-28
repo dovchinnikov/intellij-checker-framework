@@ -30,13 +30,11 @@ public class CheckerFrameworkGlobalInspection extends GlobalSimpleInspectionTool
 
         final List<ProblemDescriptor> problemDescriptors = checkerFrameworkCompiler.processFile((PsiJavaFile) file);
         if (problemDescriptors != null) {
-//            final RefEntity refEntity = ;
-            for (ProblemDescriptor problemDescriptor : problemDescriptors) {
+            for (final ProblemDescriptor problemDescriptor : problemDescriptors) {
                 problemDescriptionsProcessor.addProblemElement(
                     GlobalInspectionContextUtil.retrieveRefElement(problemDescriptor.getPsiElement(), globalContext),
                     problemDescriptor
                 );
-//                    problemsHolder.registerProblem(problemDescriptor);
             }
         }
     }

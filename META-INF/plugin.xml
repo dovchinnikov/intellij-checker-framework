@@ -51,7 +51,6 @@
             groupKey="group.name"
             bundle="resources.CheckerFramework"
             key="global.inspection.name"
-            level="ERROR"
             language="JAVA"
             enabledByDefault="true"
             implementationClass="com.jetbrains.plugins.checkerframework.inspection.CheckerFrameworkGlobalInspection"/>
