@@ -1,9 +1,12 @@
 package com.jetbrains.plugins.checkerframework.configurable
 
+import groovy.transform.CompileStatic
+
 import javax.swing.table.AbstractTableModel
 
 import static java.lang.Boolean.TRUE
 
+@CompileStatic
 public class CheckersTableModel<C> extends AbstractTableModel {
 
     private static final String[] COLUMN_NAMES = ["Enabled", "Checker class"];
@@ -12,24 +15,25 @@ public class CheckersTableModel<C> extends AbstractTableModel {
     private final List<Entry<C>> myEntries;
 
     public CheckersTableModel(Collection<Class<? extends C>> all, Collection<Class<? extends C>> enabled) {
-        myEntries = all.collect({clazz ->
-            new Entry<C>(
-                enabled.contains(clazz),
-                clazz
-            )
-        }).asList()
+        myEntries = all.collect {
+            Class<? extends C> clazz ->
+                new Entry<C>(
+                    enabled.contains(clazz),
+                    clazz
+                )
+        }.asList()
     }
 
     public Collection<Class<? extends C>> getEnabledClasses() {
         myEntries.findAll {
-            entry -> entry.enabled
+            Entry entry -> entry.enabled
         }.collect {
-            entry -> entry.clazz
+            Entry entry -> entry.clazz
         }
     }
 
     public void setEnabledClasses(Collection<Class<? extends C>> classes) {
-        myEntries.every {entry -> entry.enabled = classes.contains(entry.clazz)}
+        myEntries.every {Entry entry -> entry.enabled = classes.contains(entry.clazz)}
     }
 
     @Override
