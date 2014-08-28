@@ -102,11 +102,7 @@ public class CheckerFrameworkSettings implements PersistentStateComponent<Checke
     }
 
     public @NotNull Collection<String> getOptions() {
-        return new LinkedHashSet<String>(myOptions) {{
-            add("-cp");
-            add(Stuff.PATH_TO_CHECKER);
-            add("-Adetailedmsgtext");
-        }};
+        return myOptions;
     }
 
     public void setOptions(@NotNull Collection<String> options) {
@@ -114,6 +110,13 @@ public class CheckerFrameworkSettings implements PersistentStateComponent<Checke
         myOptions.addAll(options);
     }
 
+    public @NotNull Collection<String> createCompilerOptions() {
+        return new LinkedHashSet<String>(myOptions) {{
+            add("-cp");
+            add(Stuff.PATH_TO_CHECKER);
+            add("-Adetailedmsgtext");
+        }};
+    }
 
 //    @NotNull
 //    public Object createCompiler() throws IllegalAccessException, InvocationTargetException, InstantiationException {

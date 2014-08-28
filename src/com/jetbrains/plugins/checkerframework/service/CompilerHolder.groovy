@@ -32,7 +32,7 @@ public class CompilerHolder {
             CheckerFrameworkSharedCompiler call() throws Exception {
                 return new CheckerFrameworkSharedCompiler(
                     myProject,
-                    settings.options,
+                    settings.createCompilerOptions(),
                     settings.enabledCheckerClasses,
                 );
             }
@@ -43,7 +43,7 @@ public class CompilerHolder {
         final CheckerFrameworkSettings settings = CheckerFrameworkSettings.getInstance(myProject);
         implementation = resetFuture?.get() ?: new CheckerFrameworkSharedCompiler(
             myProject,
-            settings.options,
+            settings.createCompilerOptions(),
             settings.enabledCheckerClasses,
         );
     }

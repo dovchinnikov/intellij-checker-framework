@@ -33,7 +33,7 @@ public class CheckerFrameworkGlobalInspection extends GlobalSimpleInspectionTool
         super.initialize(context);
         Project project = context.getProject();
         CheckerFrameworkSettings settings = CheckerFrameworkSettings.getInstance(project);
-        checkerFrameworkCompiler = new CheckerFrameworkUnsharedCompiler(project, settings.getOptions(), settings.getEnabledCheckerClasses());
+        checkerFrameworkCompiler = new CheckerFrameworkUnsharedCompiler(project, settings.createCompilerOptions(), settings.getEnabledCheckerClasses());
     }
 
     @Override
