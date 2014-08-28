@@ -92,8 +92,8 @@ public class CheckerFrameworkProblemDescriptorBuilder {
         }
         final @NotNull String problemKey = matcher.group(1);
         final @SuppressWarnings("UnusedDeclaration") int magicNumber = Integer.parseInt(matcher.group(2));
-        final String foundType = XmlUtil.escape(XmlUtil.escape(matcher.group(3).trim()));
-        final String requiredType = XmlUtil.escape(XmlUtil.escape(matcher.group(4).trim()));
+        final String foundType = XmlUtil.escape(matcher.group(3).trim());
+        final String requiredType = XmlUtil.escape(matcher.group(4).trim());
         final int startPosition = Integer.parseInt(matcher.group(5));
         final int endPosition = Integer.parseInt(matcher.group(6));
         final String description = XmlUtil.escape(StringUtil.capitalize(matcher.group(7).trim()));
