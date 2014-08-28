@@ -1,7 +1,7 @@
 package com.jetbrains.plugins.checkerframework.inspection;
 
-import com.intellij.codeInspection.BaseJavaBatchLocalInspectionTool;
 import com.intellij.codeInspection.InspectionManager;
+import com.intellij.codeInspection.LocalInspectionTool;
 import com.intellij.codeInspection.ProblemDescriptor;
 import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.project.Project;
@@ -19,7 +19,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 
-public class AwesomeInspection extends BaseJavaBatchLocalInspectionTool {
+public class AwesomeInspection extends LocalInspectionTool {
 
     @SuppressWarnings("UnusedDeclaration")
     private static final Logger LOG = Logger.getInstance("#" + AwesomeInspection.class.getCanonicalName());

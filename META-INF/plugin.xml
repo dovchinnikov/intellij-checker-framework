@@ -50,7 +50,6 @@
             groupKey="group.name"
             bundle="resources.CheckerFramework"
             key="awesome.inspection.name"
-            level="WARNING"
             language="JAVA"
             enabledByDefault="true"
             implementationClass="com.jetbrains.plugins.checkerframework.inspection.AwesomeInspection"/>

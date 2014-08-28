@@ -27,7 +27,7 @@ public abstract class RunForScopeAction extends AnAction {
         {   // reset compiler (symtab, processor caches, etc)
             final Project project = e.getProject();
             assert project != null;
-            CompilerHolder.getInstance(project).resetSync();
+            CompilerHolder.getInstance(project).resetAsync();
         }
         final InspectionToolWrapper toolWrapper = new LocalInspectionToolWrapper(new AwesomeInspection());
         final InspectionManagerEx inspectionManagerEx = (InspectionManagerEx) InspectionManager.getInstance(e.getProject());

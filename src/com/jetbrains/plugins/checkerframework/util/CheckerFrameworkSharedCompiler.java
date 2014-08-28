@@ -6,7 +6,9 @@ import com.intellij.openapi.project.Project;
 import com.intellij.openapi.util.Computable;
 import com.intellij.openapi.util.Key;
 import com.intellij.psi.*;
+import com.intellij.psi.impl.file.PsiJavaDirectoryImpl;
 import com.jetbrains.plugins.checkerframework.tools.*;
+import com.sun.source.util.TreePath;
 import com.sun.source.util.Trees;
 import com.sun.tools.javac.api.JavacTool;
 import com.sun.tools.javac.code.Symtab;
@@ -20,7 +22,6 @@ import com.sun.tools.javac.processing.JavacProcessingEnvironment;
 import com.sun.tools.javac.util.Context;
 import com.sun.tools.javac.util.Name;
 import com.sun.tools.javac.util.Names;
-import org.apache.log4j.Level;
 import org.checkerframework.framework.source.AggregateChecker;
 import org.checkerframework.framework.source.SourceChecker;
 import org.checkerframework.stubparser.JavaParser;
@@ -46,8 +47,6 @@ public class CheckerFrameworkSharedCompiler extends PsiTreeChangeAdapter {
 
     static {
         JavaParser.setCacheParser(false);
-        LOG.setLevel(Level.DEBUG);
-        LOG.debug("lol");
     }
 
     private final FilteringDiagnosticCollector myDiagnosticCollector = new FilteringDiagnosticCollector();
@@ -62,8 +61,7 @@ public class CheckerFrameworkSharedCompiler extends PsiTreeChangeAdapter {
     private final Names                 names;
     private final Symtab                symtab;
     private final ClassReader           myClassReader;
-    private final AtomicReference<Boolean> symtabRunning     = new AtomicReference<Boolean>(false);
-    private final AtomicReference<Boolean> processingRunning = new AtomicReference<Boolean>(false);
+    private final AtomicReference<Boolean> symtabRunning = new AtomicReference<Boolean>(false);
 
     public CheckerFrameworkSharedCompiler(final @NotNull Project project,
                                           final @NotNull Collection<String> compileOptions,
@@ -103,7 +101,7 @@ public class CheckerFrameworkSharedCompiler extends PsiTreeChangeAdapter {
     @SuppressWarnings("UnusedDeclaration")
     @Nullable
     public List<Diagnostic<? extends JavaFileObject>> getMessages(@NotNull final PsiJavaFile psiJavaFile, boolean isOnTheFly) {
-        if (processingRunning.compareAndSet(true, true)) {
+        if (symtabRunning.compareAndSet(true, true)) {
             return null;
         }
         {   // remove & reenter changed files
@@ -133,8 +131,14 @@ public class CheckerFrameworkSharedCompiler extends PsiTreeChangeAdapter {
                         long start = System.currentTimeMillis();
                         try {
                             System.out.println("Processing " + classSymbol + " start");
-                            synchronized (processingRunning) {
-                                processor.typeProcess(classSymbol, Trees.instance(environment).getPath(classSymbol));
+                            synchronized (symtabRunning) {
+                                TreePath treePath;
+                                try {
+                                    treePath = Trees.instance(environment).getPath(classSymbol);
+                                } catch (AssertionError e) {
+                                    throw new EnoughException(e);
+                                }
+                                processor.typeProcess(classSymbol, treePath);
                             }
                         } catch (EnoughException e) {
                             LOG.debug(e);
@@ -212,6 +216,7 @@ public class CheckerFrameworkSharedCompiler extends PsiTreeChangeAdapter {
 
     @Override
     public void childRemoved(@NotNull PsiTreeChangeEvent event) {
+        if (event.getParent() instanceof PsiJavaDirectoryImpl)
         cleanLater(event);
     }
 
@@ -243,7 +248,7 @@ public class CheckerFrameworkSharedCompiler extends PsiTreeChangeAdapter {
             long start = System.currentTimeMillis();
 
             try {
-                processingRunning.set(true);
+                symtabRunning.set(true);
                 final ClassSymbol classSymbol = ApplicationManager.getApplication().runReadAction(new Computable<ClassSymbol>() {
                     @Override
                     public ClassSymbol compute() {
@@ -276,7 +281,7 @@ public class CheckerFrameworkSharedCompiler extends PsiTreeChangeAdapter {
                 });
             } finally {
                 System.out.println(System.currentTimeMillis() - start + "ms elapsed");
-                processingRunning.set(false);
+                symtabRunning.set(false);
             }
         }
     }

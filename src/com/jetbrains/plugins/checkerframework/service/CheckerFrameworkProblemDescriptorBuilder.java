@@ -21,7 +21,8 @@ import org.intellij.lang.annotations.Language;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
-import javax.tools.*;
+import javax.tools.Diagnostic;
+import javax.tools.JavaFileObject;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.regex.Matcher;
@@ -34,11 +35,11 @@ public class CheckerFrameworkProblemDescriptorBuilder {
     private static final @Language("RegExp") String  TYPE        = "[@<>\\(\\)\\.\\w\\s:\"]+";
     private static final                     Pattern MSG_PATTERN = Pattern.compile(
         "^\\(([\\w\\.]+)\\)\\s" + DELIMITER
-        + "\\s(\\d+)\\s" + DELIMITER
-        + "(" + TYPE + ")" + DELIMITER
-        + "(" + TYPE + ")" + DELIMITER
-        + "\\s\\(\\s?(\\d+)\\s?,\\s?(\\d+)\\s?\\)\\s" + DELIMITER + "([\\w\\s]+\\.)"
-        + ".*$",
+            + "\\s(\\d+)\\s" + DELIMITER
+            + "(" + TYPE + ")" + DELIMITER
+            + "(" + TYPE + ")" + DELIMITER
+            + "\\s\\(\\s?(\\d+)\\s?,\\s?(\\d+)\\s?\\)\\s" + DELIMITER + "([\\w\\s]+\\.)"
+            + ".*$",
         Pattern.DOTALL
     );
 
@@ -81,7 +82,8 @@ public class CheckerFrameworkProblemDescriptorBuilder {
     }
 
     @Nullable
-    public ProblemDescriptor buildProblemDescriptor(final @NotNull PsiFile file, final @NotNull String diagnosticString,
+    public ProblemDescriptor buildProblemDescriptor(final @NotNull PsiFile file,
+                                                    final @NotNull String diagnosticString,
                                                     boolean isOnTheFly) {
         final Matcher matcher = MSG_PATTERN.matcher(diagnosticString);
         if (!matcher.matches()) {
@@ -114,8 +116,8 @@ public class CheckerFrameworkProblemDescriptorBuilder {
                 final PsiElement element = PsiTreeUtil.getNonStrictParentOfType(
                     parent,
                     PROBLEM_KEY_TO_CLASS.containsKey(problemKey)
-                    ? PROBLEM_KEY_TO_CLASS.asArray(problemKey)
-                    : new Class[]{PsiElement.class}
+                        ? PROBLEM_KEY_TO_CLASS.asArray(problemKey)
+                        : new Class[]{PsiElement.class}
                 );
                 assert element != null : "Cannot find problem element for '" + problemKey + "' key.";
                 problemElement = element;
