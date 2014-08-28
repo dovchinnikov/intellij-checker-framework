@@ -52,6 +52,7 @@
             key="global.inspection.name"
             language="JAVA"
             enabledByDefault="true"
+            shortName="cfInspection"
             implementationClass="com.jetbrains.plugins.checkerframework.inspection.CheckerFrameworkGlobalInspection"/>
     </extensions>
 
