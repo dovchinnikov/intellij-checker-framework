@@ -1,5 +1,6 @@
 package com.jetbrains.plugins.checkerframework.service
 
+import com.intellij.codeInspection.ProblemDescriptor
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.components.ServiceManager
 import com.intellij.openapi.project.Project
@@ -8,8 +9,6 @@ import com.jetbrains.plugins.checkerframework.util.CheckerFrameworkSharedCompile
 import org.jetbrains.annotations.NotNull
 import org.jetbrains.annotations.Nullable
 
-import javax.tools.Diagnostic
-import javax.tools.JavaFileObject
 import java.util.concurrent.Future
 
 public class CompilerHolder {
@@ -48,12 +47,15 @@ public class CompilerHolder {
     }
 
     @Nullable
-    public List<Diagnostic<? extends JavaFileObject>> getMessages(
-        @NotNull PsiJavaFile psiJavaFile, boolean isOnTheFly) {
-        if (!isOnTheFly && implementation == null) {
-            resetSync();
+    public List<ProblemDescriptor> processFile(@NotNull PsiJavaFile psiJavaFile, boolean isOnTheFly) {
+        if (implementation == null) {
+            if (isOnTheFly) {
+                implementation = resetFuture?.done ? resetFuture.get() : null
+            } else {
+                resetSync()
+            }
         }
-        return implementation?.getMessages(psiJavaFile, isOnTheFly);
+        return implementation?.processFile(psiJavaFile, isOnTheFly);
     }
 
     public static CompilerHolder getInstance(Project project) {
