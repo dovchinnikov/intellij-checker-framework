@@ -5,7 +5,7 @@ import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.components.ServiceManager
 import com.intellij.openapi.project.Project
 import com.intellij.psi.PsiJavaFile
-import com.jetbrains.plugins.checkerframework.util.CheckerFrameworkSharedCompiler
+import com.jetbrains.plugins.checkerframework.compiler.CheckerFrameworkSharedCompiler
 import groovy.transform.CompileStatic
 import org.jetbrains.annotations.NotNull
 import org.jetbrains.annotations.Nullable

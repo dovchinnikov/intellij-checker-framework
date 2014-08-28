@@ -1,4 +1,4 @@
-package com.jetbrains.plugins.checkerframework.util;
+package com.jetbrains.plugins.checkerframework.compiler;
 
 import com.intellij.codeInspection.ProblemDescriptor;
 import com.intellij.openapi.application.ApplicationManager;
@@ -12,6 +12,7 @@ import com.intellij.psi.PsiJavaFile;
 import com.intellij.psi.PsiTreeChangeAdapter;
 import com.jetbrains.plugins.checkerframework.service.CheckerFrameworkProblemDescriptorBuilder;
 import com.jetbrains.plugins.checkerframework.tools.*;
+import com.jetbrains.plugins.checkerframework.util.CheckerFrameworkModificationListener;
 import com.sun.source.util.TreePath;
 import com.sun.source.util.Trees;
 import com.sun.tools.javac.api.JavacTool;
