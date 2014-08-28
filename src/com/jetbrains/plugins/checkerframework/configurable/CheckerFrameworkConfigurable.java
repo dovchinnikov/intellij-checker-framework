@@ -1,10 +1,11 @@
 package com.jetbrains.plugins.checkerframework.configurable;
 
-import com.intellij.openapi.options.Configurable;
 import com.intellij.openapi.options.ConfigurationException;
+import com.intellij.openapi.options.SearchableConfigurable;
 import com.intellij.openapi.project.Project;
 import com.jetbrains.plugins.checkerframework.service.CheckerFrameworkSettings;
 import com.jetbrains.plugins.checkerframework.service.CompilerHolder;
+import com.jetbrains.plugins.checkerframework.service.Stuff;
 import org.jetbrains.annotations.Nls;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -13,7 +14,7 @@ import javax.swing.*;
 
 import static com.jetbrains.plugins.checkerframework.service.CheckerFrameworkState.collectionEquals;
 
-public class CheckerFrameworkConfigurable implements Configurable {
+public class CheckerFrameworkConfigurable implements SearchableConfigurable {
 
     private final @NotNull Project                        myProject;
     private final @NotNull CheckerFrameworkSettings       mySettings;
@@ -67,5 +68,15 @@ public class CheckerFrameworkConfigurable implements Configurable {
     @Override
     public void disposeUIResources() {
         // nothing to do here
+    }
+
+    @Override
+    public @NotNull String getId() {
+        return Stuff.CONFIGURABLE_ID;
+    }
+
+    @Override
+    public @Nullable Runnable enableSearch(String option) {
+        return null;
     }
 }
