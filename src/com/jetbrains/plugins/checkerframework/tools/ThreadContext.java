@@ -1,14 +1,12 @@
 package com.jetbrains.plugins.checkerframework.tools;
 
-import com.jetbrains.plugins.checkerframework.util.EnoughException;
+import com.intellij.openapi.progress.ProgressManager;
 import com.sun.tools.javac.util.Context;
 
 public class ThreadContext extends Context {
 
     public static void assertNotEnough() {
-        if (Thread.currentThread().isInterrupted()) {
-            throw new EnoughException("too long");
-        }
+        ProgressManager.checkCanceled();
     }
 
     @Override

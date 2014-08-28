@@ -145,7 +145,7 @@ public class CheckerFrameworkProblemDescriptorBuilder {
             problemElement,
             tooltip,
             true,
-            ProblemHighlightType.GENERIC_ERROR,
+            isOnTheFly ? ProblemHighlightType.GENERIC_ERROR : ProblemHighlightType.ERROR,
             isOnTheFly,
             fixes.toArray(new LocalQuickFix[fixes.size()])
         );
@@ -154,5 +154,15 @@ public class CheckerFrameworkProblemDescriptorBuilder {
     @NotNull
     public static CheckerFrameworkProblemDescriptorBuilder getInstance(final @NotNull Project project) {
         return ServiceManager.getService(project, CheckerFrameworkProblemDescriptorBuilder.class);
+    }
+
+    public ProblemDescriptor buildTooLongProblem(PsiFile file) {
+        return myInspectionManager.createProblemDescriptor(
+            file,
+            CheckerFrameworkMessages.message("too.long.tooltip"),
+            true,
+            null,
+            ProblemHighlightType.GENERIC_ERROR_OR_WARNING
+        );
     }
 }

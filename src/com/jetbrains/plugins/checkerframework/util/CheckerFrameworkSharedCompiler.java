@@ -1,12 +1,16 @@
 package com.jetbrains.plugins.checkerframework.util;
 
+import com.intellij.codeInspection.ProblemDescriptor;
 import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.diagnostic.Logger;
+import com.intellij.openapi.progress.ProcessCanceledException;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.util.Computable;
 import com.intellij.openapi.util.Key;
-import com.intellij.psi.*;
-import com.intellij.psi.impl.file.PsiJavaDirectoryImpl;
+import com.intellij.psi.PsiClass;
+import com.intellij.psi.PsiJavaFile;
+import com.intellij.psi.PsiTreeChangeAdapter;
+import com.jetbrains.plugins.checkerframework.service.CheckerFrameworkProblemDescriptorBuilder;
 import com.jetbrains.plugins.checkerframework.tools.*;
 import com.sun.source.util.TreePath;
 import com.sun.source.util.Trees;
@@ -30,8 +34,10 @@ import org.jetbrains.annotations.Nullable;
 
 import javax.annotation.processing.ProcessingEnvironment;
 import javax.tools.*;
-import java.util.*;
-import java.util.concurrent.*;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.List;
+import java.util.concurrent.Callable;
 import java.util.concurrent.atomic.AtomicReference;
 
 import static com.sun.tools.javac.code.Symbol.ClassSymbol;
@@ -49,31 +55,40 @@ public class CheckerFrameworkSharedCompiler extends PsiTreeChangeAdapter {
         JavaParser.setCacheParser(false);
     }
 
-    private final FilteringDiagnosticCollector myDiagnosticCollector = new FilteringDiagnosticCollector();
-    private final Set<PsiJavaFile>             myChangedFiles        = new HashSet<PsiJavaFile>();
+    private final Project myProject;
+    private final ReusableDiagnosticCollector myReusableDiagnosticCollector = new ReusableDiagnosticCollector();
+    private final AtomicReference<Boolean>    symtabRunning                 = new AtomicReference<Boolean>(false);
+    private final Collection<Class<? extends SourceChecker>> myEnabledCheckerClasses;
+    private final CheckerFrameworkProblemDescriptorBuilder   descriptorBuilder;
+    private final CheckerFrameworkModificationListener       myModificationListener;
+    private       AggregateCheckerEx                         processor;
+
     private final JavaFileManager       fileManager;
     private final Context               mySharedContext;
-    private final AggregateCheckerEx    processor;
     private final ProcessingEnvironment environment;
     private final JavaCompiler          compiler;
     private final Check                 check;
     private final Todo                  todo;
     private final Names                 names;
     private final Symtab                symtab;
-    private final ClassReader           myClassReader;
-    private final AtomicReference<Boolean> symtabRunning = new AtomicReference<Boolean>(false);
+    private final ClassReader           classReader;
 
     public CheckerFrameworkSharedCompiler(final @NotNull Project project,
                                           final @NotNull Collection<String> compileOptions,
                                           final @NotNull Collection<Class<? extends SourceChecker>> classes) {
-        System.out.println("Compiler instance creating start");
         long startTime = System.currentTimeMillis();
+        System.out.println("Compiler instance creating start");
+
+        myProject = project;
+        myEnabledCheckerClasses = classes;
+        descriptorBuilder = CheckerFrameworkProblemDescriptorBuilder.getInstance(project);
+        myModificationListener = CheckerFrameworkModificationListener.getInstance(project);
 
         fileManager = new PsiJavaFileManager(FILE_MANAGER, project);
         mySharedContext = new ThreadContext();
         { // init context with own file manager
             ThreadedTrees.preRegister(mySharedContext);
-            mySharedContext.put(DiagnosticListener.class, myDiagnosticCollector);
+            mySharedContext.put(DiagnosticListener.class, myReusableDiagnosticCollector);
             mySharedContext.put(JavaFileManager.class, fileManager);
             JavacTool.processOptions(mySharedContext, fileManager, compileOptions);
         }
@@ -83,39 +98,41 @@ public class CheckerFrameworkSharedCompiler extends PsiTreeChangeAdapter {
         symtab = Symtab.instance(mySharedContext);
         check = Check.instance(mySharedContext);
         environment = JavacProcessingEnvironment.instance(mySharedContext);
-        myClassReader = ClassReader.instance(mySharedContext);
+        classReader = ClassReader.instance(mySharedContext);
 
-        // init processor
-        processor = new AggregateCheckerEx() {
-            @Override
-            protected Collection<Class<? extends SourceChecker>> getSupportedCheckers() {
-                return classes;
-            }
-        };
-        processor.setProcessingEnvironment(environment);
-        processor.initChecker();
+        processor = createAntInitProcessor();
+
         System.out.println("Compiler instance created, " + (System.currentTimeMillis() - startTime) + "ms elapsed");
-        PsiManager.getInstance(project).addPsiTreeChangeListener(this);
     }
 
-    @SuppressWarnings("UnusedDeclaration")
+    private AggregateCheckerEx createAntInitProcessor() {
+        AggregateCheckerEx result = new AggregateCheckerEx() {
+            @Override
+            protected Collection<Class<? extends SourceChecker>> getSupportedCheckers() {
+                return myEnabledCheckerClasses;
+            }
+        };
+        result.setProcessingEnvironment(environment);
+        result.initChecker();
+        return result;
+    }
+
     @Nullable
-    public List<Diagnostic<? extends JavaFileObject>> getMessages(@NotNull final PsiJavaFile psiJavaFile, boolean isOnTheFly) {
+    public List<ProblemDescriptor> processFile(@NotNull final PsiJavaFile psiJavaFile, final boolean isOnTheFly) {
         if (symtabRunning.compareAndSet(true, true)) {
             return null;
         }
         {   // remove & reenter changed files
-            for (final PsiJavaFile javaFile : myChangedFiles) {
+            for (final PsiJavaFile javaFile : myModificationListener.getChangedFiles()) {
                 clean(javaFile);
                 final PsiJavaFileObject javaFileObject = new PsiJavaFileObject(javaFile);
-                myClassReader.enterClass(
+                classReader.enterClass(
                     names.fromString(fileManager.inferBinaryName(null, javaFileObject)),
                     javaFileObject
                 );
             }
-            myChangedFiles.clear();
         }
-        final Callable<List<ClassSymbol>> classSymbolCompleter = new Completer(psiJavaFile);
+        final Completer classSymbolCompleter = new Completer(psiJavaFile);
         if (psiJavaFile.getUserData(KEY) != null || !isOnTheFly) {
             final List<ClassSymbol> classSymbols;
             try {
@@ -124,51 +141,50 @@ public class CheckerFrameworkSharedCompiler extends PsiTreeChangeAdapter {
                 LOG.error(e);
                 return null;
             }
-            final Future future = ApplicationManager.getApplication().executeOnPooledThread(new Runnable() {
-                @Override
-                public void run() {
-                    for (ClassSymbol classSymbol : classSymbols) {
-                        long start = System.currentTimeMillis();
-                        try {
-                            System.out.println("Processing " + classSymbol + " start");
-                            synchronized (symtabRunning) {
-                                TreePath treePath;
-                                try {
-                                    treePath = Trees.instance(environment).getPath(classSymbol);
-                                } catch (AssertionError e) {
-                                    throw new EnoughException(e);
-                                }
-                                processor.typeProcess(classSymbol, treePath);
+            final List<ProblemDescriptor> problems = new ArrayList<ProblemDescriptor>();
+//            final Future future = ApplicationManager.getApplication().executeOnPooledThread();
+            try {
+                myReusableDiagnosticCollector.setInternal(new DiagnosticListener<JavaFileObject>() {
+                    @Override
+                    public void report(final Diagnostic<? extends JavaFileObject> diagnostic) {
+                        final ProblemDescriptor problemDescriptor = ApplicationManager.getApplication().runReadAction(new Computable<ProblemDescriptor>() {
+                            @Override
+                            public ProblemDescriptor compute() {
+                                return descriptorBuilder.buildProblemDescriptor(
+                                    psiJavaFile,
+                                    diagnostic,
+                                    isOnTheFly
+                                );
                             }
-                        } catch (EnoughException e) {
-                            LOG.debug(e);
-                        } finally {
-                            System.out.println("Processing " + classSymbol + " " + (System.currentTimeMillis() - start) + "ms elapsed");
+                        });
+                        if (problemDescriptor != null) {
+                            problems.add(problemDescriptor);
                         }
                     }
-                }
-            });
-            try {
-                if (isOnTheFly) {
-                    future.get(1000, TimeUnit.MILLISECONDS);
-                } else {
-                    future.get();
-                }
-            } catch (InterruptedException e) {
-                myDiagnosticCollector.getAndClear();
-                return null;
-            } catch (ExecutionException e) {
-                myDiagnosticCollector.getAndClear();
-                return null;
-            } catch (TimeoutException e) {
-                future.cancel(true);
-                myDiagnosticCollector.getAndClear();
-                return null;
+                });
+                processor = isOnTheFly ? processor : createAntInitProcessor();
+                final ProcessorRunner processorRunner = new ProcessorRunner(classSymbols);
+                processorRunner.run();
+//                if (isOnTheFly) {
+//                    future.get(1000, TimeUnit.MILLISECONDS);
+//                } else {
+//                future.get();
+//                }
+//            } catch (InterruptedException e) {
+//                LOG.error(e);
+//            } catch (ExecutionException e) {
+//                LOG.error(e);
+            } catch (ProcessCanceledException e) {
+//                future.cancel(true);
+                problems.clear();
+                problems.add(descriptorBuilder.buildTooLongProblem(psiJavaFile));
+            } finally {
+                myReusableDiagnosticCollector.setInternal(null);
             }
-            return myDiagnosticCollector.getAndClear();
+            return problems;
         } else {
             psiJavaFile.putUserData(KEY, true);
-            ApplicationManager.getApplication().executeOnPooledThread(classSymbolCompleter);
+            ApplicationManager.getApplication().executeOnPooledThread((Runnable) classSymbolCompleter);
             return null;
         }
     }
@@ -199,43 +215,38 @@ public class CheckerFrameworkSharedCompiler extends PsiTreeChangeAdapter {
         }
     }
 
-    private void cleanLater(PsiFile file) {
-        if (file instanceof PsiJavaFile) {
-            myChangedFiles.add((PsiJavaFile) file);
+
+    private class ProcessorRunner implements Runnable {
+
+        private final List<ClassSymbol> classSymbols;
+
+        private ProcessorRunner(List<ClassSymbol> classSymbols) {
+            this.classSymbols = classSymbols;
+        }
+
+        @Override
+        public void run() {
+            for (ClassSymbol classSymbol : classSymbols) {
+                long start = System.currentTimeMillis();
+                try {
+                    System.out.println("Processing " + classSymbol + " start");
+                    TreePath treePath;
+                    try {
+                        treePath = Trees.instance(environment).getPath(classSymbol);
+                    } catch (AssertionError e) {
+                        throw (RuntimeException) e.getCause();
+                    }
+                    processor.typeProcess(classSymbol, treePath);
+//                } catch (EnoughException e) {
+//                    LOG.debug(e);
+                } finally {
+                    System.out.println("Processing " + classSymbol + " " + (System.currentTimeMillis() - start) + "ms elapsed");
+                }
+            }
         }
     }
 
-    private void cleanLater(PsiTreeChangeEvent event) {
-        cleanLater(event.getFile());
-    }
-
-    @Override
-    public void childAdded(@NotNull PsiTreeChangeEvent event) {
-        cleanLater(event);
-    }
-
-    @Override
-    public void childRemoved(@NotNull PsiTreeChangeEvent event) {
-        if (event.getParent() instanceof PsiJavaDirectoryImpl)
-        cleanLater(event);
-    }
-
-    @Override
-    public void childReplaced(@NotNull PsiTreeChangeEvent event) {
-        cleanLater(event);
-    }
-
-    @Override
-    public void childMoved(@NotNull PsiTreeChangeEvent event) {
-        cleanLater(event);
-    }
-
-    @Override
-    public void childrenChanged(@NotNull PsiTreeChangeEvent event) {
-        cleanLater(event);
-    }
-
-    private class Completer implements Callable<List<ClassSymbol>> {
+    private class Completer implements Callable<List<ClassSymbol>>, Runnable {
 
         private final PsiJavaFile myPsiJavaFile;
 
@@ -282,6 +293,15 @@ public class CheckerFrameworkSharedCompiler extends PsiTreeChangeAdapter {
             } finally {
                 System.out.println(System.currentTimeMillis() - start + "ms elapsed");
                 symtabRunning.set(false);
+            }
+        }
+
+        @Override
+        public void run() {
+            try {
+                call();
+            } catch (Exception e) {
+                throw new RuntimeException(e);
             }
         }
     }

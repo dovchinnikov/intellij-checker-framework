@@ -12,7 +12,7 @@ import java.util.Locale;
  */
 public class FilteringDiagnosticCollector implements DiagnosticListener<JavaFileObject> {
 
-    private static final String PROC_CODE = "compiler.err.proc.messager";
+    public  static final String PROC_CODE = "compiler.err.proc.messager";
 
     private final List<Diagnostic<? extends JavaFileObject>> myDiagnostics = new ArrayList<Diagnostic<? extends JavaFileObject>>();
 

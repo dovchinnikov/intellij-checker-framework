@@ -33,6 +33,7 @@
         <projectService serviceImplementation="com.jetbrains.plugins.checkerframework.util.CheckerFrameworkSharedCompiler"/>
         <projectService serviceImplementation="com.jetbrains.plugins.checkerframework.service.CheckerFrameworkProblemDescriptorBuilder"/>
         <projectService serviceImplementation="com.jetbrains.plugins.checkerframework.service.CompilerHolder"/>
+        <projectService serviceImplementation="com.jetbrains.plugins.checkerframework.util.CheckerFrameworkModificationListener"/>
         <projectConfigurable instance="com.jetbrains.plugins.checkerframework.configurable.CheckerFrameworkConfigurable"/>
 
         <localInspection
@@ -45,14 +46,15 @@
             enabledByDefault="true"
             implementationClass="com.jetbrains.plugins.checkerframework.inspection.RegexUselessPlacementInspection"/>
 
-        <localInspection
+        <globalInspection
             groupBundle="resources.CheckerFramework"
             groupKey="group.name"
             bundle="resources.CheckerFramework"
-            key="awesome.inspection.name"
+            key="global.inspection.name"
+            level="ERROR"
             language="JAVA"
             enabledByDefault="true"
-            implementationClass="com.jetbrains.plugins.checkerframework.inspection.AwesomeInspection"/>
+            implementationClass="com.jetbrains.plugins.checkerframework.inspection.CheckerFrameworkGlobalInspection"/>
     </extensions>
 
 </idea-plugin>
