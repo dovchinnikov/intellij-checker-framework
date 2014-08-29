@@ -25,6 +25,7 @@ public interface Stuff {
     String REGEX_UTIL_FQN  = "org.checkerframework.checker.regex.RegexUtil";
     String PATH_TO_CHECKER = CheckerMain.findPathTo(SourceChecker.class, false);
     String CONFIGURABLE_ID = "cfConfigurable";
+    String PROC_CODE       = "compiler.err.proc.messager";
 
     List<Class<? extends SourceChecker>> BUILTIN_CHECKERS = Arrays.asList(
         NullnessChecker.class,

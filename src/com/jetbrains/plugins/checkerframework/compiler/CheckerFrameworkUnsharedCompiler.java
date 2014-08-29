@@ -5,6 +5,7 @@ import com.intellij.openapi.project.Project;
 import com.intellij.psi.PsiClass;
 import com.intellij.psi.PsiJavaFile;
 import com.jetbrains.plugins.checkerframework.service.CheckerFrameworkProblemDescriptorBuilder;
+import com.jetbrains.plugins.checkerframework.service.Stuff;
 import com.jetbrains.plugins.checkerframework.tools.*;
 import com.sun.source.util.TreePath;
 import com.sun.source.util.Trees;
@@ -99,7 +100,7 @@ public class CheckerFrameworkUnsharedCompiler implements CheckerFrameworkCompile
         myReusableDiagnosticCollector.setInternal(new DiagnosticListener<JavaFileObject>() {
             @Override
             public void report(final Diagnostic<? extends JavaFileObject> diagnostic) {
-                if (!FilteringDiagnosticCollector.PROC_CODE.equals(diagnostic.getCode())) return;
+                if (!Stuff.PROC_CODE.equals(diagnostic.getCode())) return;
                 final ProblemDescriptor problemDescriptor = descriptorBuilder.buildProblemDescriptor(
                     psiJavaFile,
                     diagnostic,
@@ -118,7 +119,6 @@ public class CheckerFrameworkUnsharedCompiler implements CheckerFrameworkCompile
             processor.typeProcess(classSymbol, tp);
         }
 
-        System.out.println(problems.size() + " problems collected in " + psiJavaFile.getName());
         return problems;
     }
 
