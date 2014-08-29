@@ -13,7 +13,7 @@ import org.jetbrains.annotations.Nullable;
 
 import java.util.List;
 
-public class AwesomeInspection extends LocalInspectionTool {
+public class CheckerFrameworkLocalInspection extends LocalInspectionTool {
 
     @Nullable
     @Override
