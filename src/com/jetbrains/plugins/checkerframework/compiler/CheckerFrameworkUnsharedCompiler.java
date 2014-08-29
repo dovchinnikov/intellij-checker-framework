@@ -6,7 +6,9 @@ import com.intellij.psi.PsiClass;
 import com.intellij.psi.PsiJavaFile;
 import com.jetbrains.plugins.checkerframework.service.CheckerFrameworkProblemDescriptorBuilder;
 import com.jetbrains.plugins.checkerframework.service.Stuff;
-import com.jetbrains.plugins.checkerframework.tools.*;
+import com.jetbrains.plugins.checkerframework.tools.PsiJavaFileManager;
+import com.jetbrains.plugins.checkerframework.tools.PsiJavaFileObject;
+import com.jetbrains.plugins.checkerframework.tools.ReusableDiagnosticCollector;
 import com.sun.source.util.TreePath;
 import com.sun.source.util.Trees;
 import com.sun.tools.javac.api.JavacTool;
@@ -34,7 +36,6 @@ import static com.sun.tools.javac.code.Symbol.ClassSymbol;
 
 public class CheckerFrameworkUnsharedCompiler implements CheckerFrameworkCompiler {
 
-    @SuppressWarnings({"FieldCanBeLocal", "UnusedDeclaration"}) private final Project myProject;
     private final ReusableDiagnosticCollector myReusableDiagnosticCollector = new ReusableDiagnosticCollector();
     private final CheckerFrameworkProblemDescriptorBuilder descriptorBuilder;
     private       AggregateCheckerEx                       processor;
@@ -47,11 +48,9 @@ public class CheckerFrameworkUnsharedCompiler implements CheckerFrameworkCompile
     public CheckerFrameworkUnsharedCompiler(final @NotNull Project project,
                                             final @NotNull Collection<String> compileOptions,
                                             final @NotNull Collection<Class<? extends SourceChecker>> classes) {
-        myProject = project;
         descriptorBuilder = CheckerFrameworkProblemDescriptorBuilder.getInstance(project);
-        mySharedContext = new ThreadedContext();
+        mySharedContext = new Context();
         { // init context with own file manager
-            ThreadedTrees.preRegister(mySharedContext);
             mySharedContext.put(DiagnosticListener.class, myReusableDiagnosticCollector);
             final JavaFileManager fileManager = new PsiJavaFileManager(FILE_MANAGER, project);
             mySharedContext.put(JavaFileManager.class, fileManager);
