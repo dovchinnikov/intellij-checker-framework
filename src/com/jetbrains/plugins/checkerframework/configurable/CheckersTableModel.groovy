@@ -33,7 +33,7 @@ public class CheckersTableModel<C> extends AbstractTableModel {
     }
 
     public void setEnabledClasses(Collection<Class<? extends C>> classes) {
-        myEntries.every {Entry entry -> entry.enabled = classes.contains(entry.clazz)}
+        myEntries.each {Entry entry -> entry.enabled = classes.contains(entry.clazz)}
     }
 
     @Override
