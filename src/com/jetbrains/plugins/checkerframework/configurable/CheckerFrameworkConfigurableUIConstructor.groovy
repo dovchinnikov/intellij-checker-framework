@@ -48,6 +48,12 @@ abstract class CheckerFrameworkConfigurableUIConstructor extends CheckerFramewor
             CheckerFrameworkLibrary.getOrCreateLibrary();
             myCreateGlobalLibraryButton.visible = !CheckerFrameworkLibrary.exists();
         });
+        myProcessorProfilesCombobox.addActionListener({
+            final ProcessorConfigProfile configProfile = myProcessorProfilesCombobox.selectedItem as ProcessorConfigProfile;
+            Set<String> existing = configProfile?.processors ?: [] as Set<String>
+            Set<String> enabled = myCheckersTableModel.enabledClasses.collect {Class clazz -> clazz.canonicalName} as Set<String>
+            myAddCheckersToSelectedProfileButton.visible = !(existing.equals(enabled))
+        });
         myAddCheckersToSelectedProfileButton.addActionListener({
             final ProcessorConfigProfile configProfile = myProcessorProfilesCombobox.selectedItem as ProcessorConfigProfile;
             BUILTIN_CHECKERS.collect {
@@ -67,6 +73,8 @@ abstract class CheckerFrameworkConfigurableUIConstructor extends CheckerFramewor
             }
             configProfile?.obtainProcessorsFromClasspath = false
             configProfile?.processorPath = Stuff.PATH_TO_CHECKER
+            configProfile?.enabled = true
+            myAddCheckersToSelectedProfileButton.visible = false
         });
     }
 
