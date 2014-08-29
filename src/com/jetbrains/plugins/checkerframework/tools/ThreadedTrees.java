@@ -30,49 +30,49 @@ public class ThreadedTrees extends JavacTrees {
     }
 
     @Override public TreePath getPath(CompilationUnitTree unit, Tree node) {
-        ThreadContext.assertNotEnough();
+        ThreadedContext.assertNotEnough();
         return super.getPath(unit, node);
     }
 
     @Override
     public JCTree.JCMethodDecl getTree(ExecutableElement method) {
-        ThreadContext.assertNotEnough();
+        ThreadedContext.assertNotEnough();
         return super.getTree(method);
     }
 
     @Override
     public JCTree getTree(Element element) {
-        ThreadContext.assertNotEnough();
+        ThreadedContext.assertNotEnough();
         return super.getTree(element);
     }
 
     @Override
     public JCTree getTree(Element e, AnnotationMirror a) {
-        ThreadContext.assertNotEnough();
+        ThreadedContext.assertNotEnough();
         return super.getTree(e, a);
     }
 
     @Override
     public JCTree getTree(Element e, AnnotationMirror a, AnnotationValue v) {
-        ThreadContext.assertNotEnough();
+        ThreadedContext.assertNotEnough();
         return super.getTree(e, a, v);
     }
 
     @Override
     public TreePath getPath(Element e, AnnotationMirror a, AnnotationValue v) {
-        ThreadContext.assertNotEnough();
+        ThreadedContext.assertNotEnough();
         return super.getPath(e, a, v);
     }
 
     @Override
     public Symbol getElement(TreePath path) {
-        ThreadContext.assertNotEnough();
+        ThreadedContext.assertNotEnough();
         return super.getElement(path);
     }
 
     @Override
     public boolean isAccessible(Scope scope, Element member, DeclaredType type) {
-        ThreadContext.assertNotEnough();
+        ThreadedContext.assertNotEnough();
         return super.isAccessible(scope, member, type);
     }
 }

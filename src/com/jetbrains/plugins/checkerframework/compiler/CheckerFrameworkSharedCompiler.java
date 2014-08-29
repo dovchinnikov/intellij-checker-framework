@@ -86,7 +86,7 @@ public class CheckerFrameworkSharedCompiler extends PsiTreeChangeAdapter {
         myModificationListener = CheckerFrameworkModificationListener.getInstance(project);
 
         fileManager = new PsiJavaFileManager(FILE_MANAGER, project);
-        mySharedContext = new ThreadContext();
+        mySharedContext = new ThreadedContext();
         { // init context with own file manager
             ThreadedTrees.preRegister(mySharedContext);
             mySharedContext.put(DiagnosticListener.class, myReusableDiagnosticCollector);

@@ -49,7 +49,7 @@ public class CheckerFrameworkUnsharedCompiler implements CheckerFrameworkCompile
                                             final @NotNull Collection<Class<? extends SourceChecker>> classes) {
         myProject = project;
         descriptorBuilder = CheckerFrameworkProblemDescriptorBuilder.getInstance(project);
-        mySharedContext = new ThreadContext();
+        mySharedContext = new ThreadedContext();
         { // init context with own file manager
             ThreadedTrees.preRegister(mySharedContext);
             mySharedContext.put(DiagnosticListener.class, myReusableDiagnosticCollector);

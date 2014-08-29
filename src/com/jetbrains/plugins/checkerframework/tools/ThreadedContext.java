@@ -3,7 +3,7 @@ package com.jetbrains.plugins.checkerframework.tools;
 import com.intellij.openapi.progress.ProgressManager;
 import com.sun.tools.javac.util.Context;
 
-public class ThreadContext extends Context {
+public class ThreadedContext extends Context {
 
     public static void assertNotEnough() {
         ProgressManager.checkCanceled();
