@@ -13,19 +13,28 @@
             id="CheckerFramework.AnalyzeMenu"
             text="Checker Framework"
             popup="true"
-            icon="/logo_light.png">
+            icon="/logo_green_16x16.png">
             <add-to-group group-id="AnalyzeMenu" anchor="last"/>
-            <action id="CheckerFramework.runCurrentFile"
-                    class="com.jetbrains.plugins.checkerframework.action.RunForScopeAction$RunForCurrentFile"
-                    text="Run checkers for current file"/>
-            <action id="CheckerFramework.runCurrentModule"
-                    class="com.jetbrains.plugins.checkerframework.action.RunForScopeAction$RunForCurrentModule"
-                    text="Run checkers for current module"/>
-            <action id="CheckerFramework.runCurrentProject"
-                    class="com.jetbrains.plugins.checkerframework.action.RunForScopeAction$RunForCurrentProject"
-                    text="Run checkers for current project"/>
+            <add-to-group group-id="MainToolBar" anchor="after" relative-to-action="ToolbarRunGroup"/>
         </group>
-
+        <action id="CheckerFramework.RunForCurrentFile"
+                class="com.jetbrains.plugins.checkerframework.action.RunForScopeAction$RunForCurrentFile"
+                text="Run for current file"
+                description="Runs Checker Framework as global inspection for current file">
+            <add-to-group group-id="CheckerFramework.AnalyzeMenu" anchor="last"/>
+        </action>
+        <action id="CheckerFramework.RunForCurrentModule"
+                class="com.jetbrains.plugins.checkerframework.action.RunForScopeAction$RunForCurrentModule"
+                text="Run for current module"
+                description="Runs Checker Framework as global inspection for current module">
+            <add-to-group group-id="CheckerFramework.AnalyzeMenu" anchor="last"/>
+        </action>
+        <action id="CheckerFramework.RunForCurrentProject"
+                class="com.jetbrains.plugins.checkerframework.action.RunForScopeAction$RunForCurrentProject"
+                text="Run for current project"
+                description="Runs Checker Framework as global inspection for current project">
+            <add-to-group group-id="CheckerFramework.AnalyzeMenu" anchor="last"/>
+        </action>
     </actions>
 
     <extensions defaultExtensionNs="com.intellij">
