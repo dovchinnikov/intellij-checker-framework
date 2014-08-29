@@ -7,6 +7,7 @@ import com.intellij.ui.AnActionButton
 import com.intellij.ui.ToolbarDecorator
 import com.intellij.ui.table.JBTable
 import com.jetbrains.plugins.checkerframework.service.CheckerFrameworkLibrary
+import com.jetbrains.plugins.checkerframework.service.Stuff
 import groovy.transform.CompileStatic
 import org.jetbrains.jps.model.java.compiler.ProcessorConfigProfile
 
@@ -64,6 +65,8 @@ abstract class CheckerFrameworkConfigurableUIConstructor extends CheckerFramewor
                     def opts = option.split(' ')
                     configProfile?.setOption(opts[0], opts.tail().join(" "))
             }
+            configProfile?.obtainProcessorsFromClasspath = false
+            configProfile?.processorPath = Stuff.PATH_TO_CHECKER
         });
     }
 
