@@ -39,7 +39,12 @@ public class CheckerFrameworkConfigurable implements SearchableConfigurable {
     @Override
     public @Nullable JComponent createComponent() {
         if (myUI == null) {
-            myUI = new CheckerFrameworkConfigurableUI(mySettings);
+            myUI = new CheckerFrameworkConfigurableUIConstructor(myProject) {
+                @Override
+                protected ComboBoxModel getProcessorProfileModel() {
+                    return new ProcessorProfileComboboxModel(myProject);
+                }
+            };
         }
         return myUI.getRoot();
     }

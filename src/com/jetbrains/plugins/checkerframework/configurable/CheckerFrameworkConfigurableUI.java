@@ -1,84 +1,155 @@
 package com.jetbrains.plugins.checkerframework.configurable;
 
-import com.intellij.icons.AllIcons;
-import com.intellij.openapi.actionSystem.AnActionEvent;
-import com.intellij.ui.AnActionButton;
-import com.intellij.ui.ToolbarDecorator;
-import com.intellij.ui.table.JBTable;
+import com.intellij.openapi.project.Project;
+import com.intellij.openapi.ui.ComboBox;
+import com.intellij.ui.components.JBLabel;
+import com.intellij.ui.components.JBTabbedPane;
+import com.intellij.uiDesigner.core.GridConstraints;
+import com.intellij.uiDesigner.core.GridLayoutManager;
+import com.intellij.uiDesigner.core.Spacer;
 import com.jetbrains.plugins.checkerframework.service.CheckerFrameworkSettings;
 import org.checkerframework.framework.source.SourceChecker;
-import org.jetbrains.annotations.NotNull;
 
 import javax.swing.*;
 import java.awt.*;
 import java.util.Collection;
+import java.util.ResourceBundle;
 
-public class CheckerFrameworkConfigurableUI {
+public abstract class CheckerFrameworkConfigurableUI {
 
-    private       JPanel                            myRootPane;
-    private       JPanel                            myCheckersPanel;
-    private       JPanel                            myOptionsPanel;
-    private final CheckersTableModel<SourceChecker> myCheckersTableModel;
-    private final OptionsTableModel                 myOptionsTableModel;
+    private         JPanel                            myRootPane;
+    protected       JPanel                            myCheckersPanel;
+    protected       JPanel                            myOptionsPanel;
+    protected       ComboBox                          myProcessorProfilesCombobox;
+    protected       JButton                           myCreateGlobalLibraryButton;
+    protected       JButton                           myAddCheckersToSelectedProfileButton;
+    protected final CheckersTableModel<SourceChecker> myCheckersTableModel;
+    protected final OptionsTableModel                 myOptionsTableModel;
 
-    public CheckerFrameworkConfigurableUI(@NotNull final CheckerFrameworkSettings settings) {
+    public CheckerFrameworkConfigurableUI(Project project) {
+        $$$setupUI$$$();
+        final CheckerFrameworkSettings settings = CheckerFrameworkSettings.getInstance(project);
         myCheckersTableModel = new CheckersTableModel<SourceChecker>(settings.getBuiltInCheckers(), settings.getEnabledCheckerClasses());
         myOptionsTableModel = new OptionsTableModel(settings.getOptions());
-
-        final JBTable myCheckersTable = new JBTable(myCheckersTableModel);
-        myCheckersTable.setAutoCreateRowSorter(true);
-        myCheckersTable.setAutoCreateColumnsFromModel(true);
-        myCheckersTable.setStriped(true);
-        myCheckersTable.setRowSelectionAllowed(false);
-        myCheckersTable.getColumnModel().getColumn(0).setMaxWidth(120);
-        myCheckersTable.getTableHeader().setReorderingAllowed(false);
-        myCheckersTable.getRowSorter().toggleSortOrder(1);
-        final JBTable myOptionsTable = new JBTable(myOptionsTableModel);
-
-        myCheckersPanel.add(
-            ToolbarDecorator.createDecorator(
-                myCheckersTable
-            ).addExtraAction(
-                new AnActionButton("Select all", AllIcons.Actions.Selectall) {
-                    @Override
-                    public void actionPerformed(AnActionEvent e) {
-                        for (int i = 0; i < myCheckersTable.getRowCount(); i++) {
-                            myCheckersTable.setValueAt(true, i, 0);
-                        }
-                    }
-                }
-            ).addExtraAction(
-                new AnActionButton("Unselect all", AllIcons.Actions.Unselectall) {
-                    @Override
-                    public void actionPerformed(AnActionEvent e) {
-                        for (int i = 0; i < myCheckersTable.getRowCount(); i++) {
-                            myCheckersTable.setValueAt(false, i, 0);
-                        }
-                    }
-                }
-            ).createPanel(),
-            BorderLayout.CENTER
-        );
-        myOptionsPanel.add(
-            ToolbarDecorator.createDecorator(myOptionsTable).createPanel(),
-            BorderLayout.CENTER
-        );
     }
 
-    public JComponent getRoot() {
+    public final JComponent getRoot() {
         return myRootPane;
     }
 
-    public Collection<Class<? extends SourceChecker>> getConfiguredEnabledCheckers() {
+    public final Collection<Class<? extends SourceChecker>> getConfiguredEnabledCheckers() {
         return myCheckersTableModel.getEnabledClasses();
     }
 
-    public Collection<String> getConfiguredOptions() {
+    public final Collection<String> getConfiguredOptions() {
         return myOptionsTableModel.getOptions();
     }
 
     public void reset(CheckerFrameworkSettings settings) {
         myCheckersTableModel.setEnabledClasses(settings.getEnabledCheckerClasses());
         myOptionsTableModel.setOptions(settings.getOptions());
+    }
+
+    private void createUIComponents() {
+        myProcessorProfilesCombobox = new ComboBox(getProcessorProfileModel());
+    }
+
+    protected abstract ComboBoxModel getProcessorProfileModel();
+
+    /**
+     * Method generated by IntelliJ IDEA GUI Designer
+     * >>> IMPORTANT!! <<<
+     * DO NOT edit this method OR call it in your code!
+     *
+     * @noinspection ALL
+     */
+    private void $$$setupUI$$$() {
+        createUIComponents();
+        myRootPane = new JPanel();
+        myRootPane.setLayout(new GridLayoutManager(2, 5, new Insets(0, 0, 0, 0), -1, -1));
+        final JBTabbedPane jBTabbedPane1 = new JBTabbedPane();
+        jBTabbedPane1.setTabLayoutPolicy(1);
+        myRootPane.add(jBTabbedPane1, new GridConstraints(0, 0, 1, 5, GridConstraints.ANCHOR_CENTER, GridConstraints.FILL_BOTH, GridConstraints.SIZEPOLICY_CAN_SHRINK | GridConstraints.SIZEPOLICY_CAN_GROW, GridConstraints.SIZEPOLICY_CAN_SHRINK | GridConstraints.SIZEPOLICY_CAN_GROW, null, new Dimension(117, 389), null, 0, false));
+        myCheckersPanel = new JPanel();
+        myCheckersPanel.setLayout(new BorderLayout(0, 0));
+        jBTabbedPane1.addTab(ResourceBundle.getBundle("resources/CheckerFramework").getString("available.checkers"), myCheckersPanel);
+        myOptionsPanel = new JPanel();
+        myOptionsPanel.setLayout(new BorderLayout(0, 0));
+        jBTabbedPane1.addTab(ResourceBundle.getBundle("resources/CheckerFramework").getString("cmd.options"), myOptionsPanel);
+        myCreateGlobalLibraryButton = new JButton();
+        this.$$$loadButtonText$$$(myCreateGlobalLibraryButton, ResourceBundle.getBundle("resources/CheckerFramework").getString("create.library"));
+        myRootPane.add(myCreateGlobalLibraryButton, new GridConstraints(1, 0, 1, 1, GridConstraints.ANCHOR_WEST, GridConstraints.FILL_NONE, GridConstraints.SIZEPOLICY_CAN_SHRINK | GridConstraints.SIZEPOLICY_CAN_GROW, GridConstraints.SIZEPOLICY_FIXED, null, null, null, 0, false));
+        final JBLabel jBLabel1 = new JBLabel();
+        this.$$$loadLabelText$$$(jBLabel1, ResourceBundle.getBundle("resources/CheckerFramework").getString("select.profile"));
+        myRootPane.add(jBLabel1, new GridConstraints(1, 1, 1, 1, GridConstraints.ANCHOR_WEST, GridConstraints.FILL_NONE, GridConstraints.SIZEPOLICY_FIXED, GridConstraints.SIZEPOLICY_FIXED, null, null, null, 0, false));
+        myRootPane.add(myProcessorProfilesCombobox, new GridConstraints(1, 2, 1, 1, GridConstraints.ANCHOR_WEST, GridConstraints.FILL_NONE, GridConstraints.SIZEPOLICY_CAN_GROW, GridConstraints.SIZEPOLICY_FIXED, null, null, null, 0, false));
+        myAddCheckersToSelectedProfileButton = new JButton();
+        this.$$$loadButtonText$$$(myAddCheckersToSelectedProfileButton, ResourceBundle.getBundle("resources/CheckerFramework").getString("apply.to.profile"));
+        myAddCheckersToSelectedProfileButton.setToolTipText(ResourceBundle.getBundle("resources/CheckerFramework").getString("apply.to.profile.description"));
+        myRootPane.add(myAddCheckersToSelectedProfileButton, new GridConstraints(1, 3, 1, 1, GridConstraints.ANCHOR_CENTER, GridConstraints.FILL_HORIZONTAL, GridConstraints.SIZEPOLICY_CAN_SHRINK | GridConstraints.SIZEPOLICY_CAN_GROW, GridConstraints.SIZEPOLICY_FIXED, null, null, null, 0, false));
+        final Spacer spacer1 = new Spacer();
+        myRootPane.add(spacer1, new GridConstraints(1, 4, 1, 1, GridConstraints.ANCHOR_CENTER, GridConstraints.FILL_HORIZONTAL, GridConstraints.SIZEPOLICY_WANT_GROW, 1, null, null, null, 0, false));
+        jBLabel1.setLabelFor(myProcessorProfilesCombobox);
+    }
+
+    /**
+     * @noinspection ALL
+     */
+    private void $$$loadLabelText$$$(JLabel component, String text) {
+        StringBuffer result = new StringBuffer();
+        boolean haveMnemonic = false;
+        char mnemonic = '\0';
+        int mnemonicIndex = -1;
+        for (int i = 0; i < text.length(); i++) {
+            if (text.charAt(i) == '&') {
+                i++;
+                if (i == text.length()) break;
+                if (!haveMnemonic && text.charAt(i) != '&') {
+                    haveMnemonic = true;
+                    mnemonic = text.charAt(i);
+                    mnemonicIndex = result.length();
+                }
+            }
+            result.append(text.charAt(i));
+        }
+        component.setText(result.toString());
+        if (haveMnemonic) {
+            component.setDisplayedMnemonic(mnemonic);
+            component.setDisplayedMnemonicIndex(mnemonicIndex);
+        }
+    }
+
+    /**
+     * @noinspection ALL
+     */
+    private void $$$loadButtonText$$$(AbstractButton component, String text) {
+        StringBuffer result = new StringBuffer();
+        boolean haveMnemonic = false;
+        char mnemonic = '\0';
+        int mnemonicIndex = -1;
+        for (int i = 0; i < text.length(); i++) {
+            if (text.charAt(i) == '&') {
+                i++;
+                if (i == text.length()) break;
+                if (!haveMnemonic && text.charAt(i) != '&') {
+                    haveMnemonic = true;
+                    mnemonic = text.charAt(i);
+                    mnemonicIndex = result.length();
+                }
+            }
+            result.append(text.charAt(i));
+        }
+        component.setText(result.toString());
+        if (haveMnemonic) {
+            component.setMnemonic(mnemonic);
+            component.setDisplayedMnemonicIndex(mnemonicIndex);
+        }
+    }
+
+    /**
+     * @noinspection ALL
+     */
+    public JComponent $$$getRootComponent$$$() {
+        return myRootPane;
     }
 }
