@@ -4,12 +4,12 @@ import com.intellij.AbstractBundle;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.PropertyKey;
 
-public class CheckerFrameworkMessages extends AbstractBundle {
+public class CheckerFrameworkBundle extends AbstractBundle {
 
-    public static final String BUNDLE = "resources.CheckerFramework";
-    private static CheckerFrameworkMessages INSTANCE = new CheckerFrameworkMessages();
+    public static final String                 BUNDLE   = "resources.CheckerFramework";
+    private static      CheckerFrameworkBundle INSTANCE = new CheckerFrameworkBundle();
 
-    private CheckerFrameworkMessages() {
+    private CheckerFrameworkBundle() {
         super(BUNDLE);
     }
 

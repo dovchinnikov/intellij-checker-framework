@@ -15,7 +15,7 @@ import com.jetbrains.plugins.checkerframework.compiler.CheckerFrameworkCompiler;
 import com.jetbrains.plugins.checkerframework.compiler.CheckerFrameworkUnsharedCompiler;
 import com.jetbrains.plugins.checkerframework.service.CheckerFrameworkSettings;
 import com.jetbrains.plugins.checkerframework.service.Stuff;
-import com.jetbrains.plugins.checkerframework.util.CheckerFrameworkMessages;
+import com.jetbrains.plugins.checkerframework.util.CheckerFrameworkBundle;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -54,7 +54,7 @@ public class CheckerFrameworkGlobalInspection extends GlobalSimpleInspectionTool
     @Override
     public @Nullable JComponent createOptionsPanel() {
         final JBPanel panel = new JBPanel();
-        final HyperlinkLabel label = new HyperlinkLabel(CheckerFrameworkMessages.message("open.settings"));
+        final HyperlinkLabel label = new HyperlinkLabel(CheckerFrameworkBundle.message("open.settings"));
         label.addHyperlinkListener(new HyperlinkListener() {
             @Override public void hyperlinkUpdate(HyperlinkEvent e) {
                 if (e.getEventType() == HyperlinkEvent.EventType.ACTIVATED) {

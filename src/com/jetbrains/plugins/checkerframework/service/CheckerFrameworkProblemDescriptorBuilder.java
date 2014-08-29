@@ -15,7 +15,7 @@ import com.intellij.psi.util.PsiTreeUtil;
 import com.intellij.xml.util.XmlUtil;
 import com.jetbrains.plugins.checkerframework.inspection.fix.SurroundWithIfRegexFix;
 import com.jetbrains.plugins.checkerframework.inspection.fix.WrapWithAsRegexFix;
-import com.jetbrains.plugins.checkerframework.util.CheckerFrameworkMessages;
+import com.jetbrains.plugins.checkerframework.util.CheckerFrameworkBundle;
 import com.jetbrains.plugins.checkerframework.util.MultiMapEx;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -120,7 +120,7 @@ public class CheckerFrameworkProblemDescriptorBuilder {
                     fixes.add(new SurroundWithIfRegexFix(enclosingExpression, myRegexUtilClass));
                 }
             }
-            tooltip = CheckerFrameworkMessages.message("incompatible.types.html.tooltip", description, requiredType, foundType);
+            tooltip = CheckerFrameworkBundle.message("incompatible.types.html.tooltip", description, requiredType, foundType);
         } else {
             tooltip = description;
         }
@@ -142,7 +142,7 @@ public class CheckerFrameworkProblemDescriptorBuilder {
     public ProblemDescriptor buildTooLongProblem(PsiFile file) {
         return myInspectionManager.createProblemDescriptor(
             file,
-            CheckerFrameworkMessages.message("too.long.tooltip"),
+            CheckerFrameworkBundle.message("too.long.tooltip"),
             true,
             null,
             ProblemHighlightType.GENERIC_ERROR_OR_WARNING
