@@ -26,7 +26,7 @@
     </annotationProcessing>
     <bytecodeTargetLevel>
       <module name="common" target="1.6" />
-      <module name="face" target="1.6" />
+      <module name="facade" target="1.6" />
       <module name="intellij-checker-framework" target="1.8" />
     </bytecodeTargetLevel>
   </component>
