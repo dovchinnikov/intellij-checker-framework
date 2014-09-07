@@ -16,6 +16,7 @@ import com.jetbrains.plugins.checkerframework.compiler.CheckerFrameworkUnsharedC
 import com.jetbrains.plugins.checkerframework.service.CheckerFrameworkSettings;
 import com.jetbrains.plugins.checkerframework.service.Stuff;
 import com.jetbrains.plugins.checkerframework.util.CheckerFrameworkBundle;
+import com.jetbrains.plugins.checkerframework.util.JdkVersion;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -26,20 +27,24 @@ import java.util.List;
 
 public class CheckerFrameworkGlobalInspection extends GlobalSimpleInspectionTool {
 
-    private CheckerFrameworkCompiler checkerFrameworkCompiler;
-
     @Override
     public void initialize(@NotNull GlobalInspectionContext context) {
+        if (!JdkVersion.check()) return;
         super.initialize(context);
         Project project = context.getProject();
         CheckerFrameworkSettings settings = CheckerFrameworkSettings.getInstance(project);
-        checkerFrameworkCompiler = new CheckerFrameworkUnsharedCompiler(project, settings.createCompilerOptions(), settings.getEnabledCheckerClasses());
+        context.putUserData(
+            CheckerFrameworkCompiler.KEY,
+            new CheckerFrameworkUnsharedCompiler(project, settings.createCompilerOptions(), settings.getEnabledCheckerClasses())
+        );
     }
 
     @Override
     public void checkFile(@NotNull PsiFile file, @NotNull InspectionManager manager, @NotNull ProblemsHolder problemsHolder, @NotNull GlobalInspectionContext globalContext, @NotNull ProblemDescriptionsProcessor problemDescriptionsProcessor) {
+        if (!JdkVersion.check()) return;
         if (!(file instanceof PsiJavaFile)) return;
-
+        final CheckerFrameworkCompiler checkerFrameworkCompiler = globalContext.getUserData(CheckerFrameworkCompiler.KEY);
+        assert checkerFrameworkCompiler != null;
         final List<ProblemDescriptor> problemDescriptors = checkerFrameworkCompiler.processFile((PsiJavaFile) file);
         if (problemDescriptors != null) {
             for (final ProblemDescriptor problemDescriptor : problemDescriptors) {
@@ -53,6 +58,7 @@ public class CheckerFrameworkGlobalInspection extends GlobalSimpleInspectionTool
 
     @Override
     public @Nullable JComponent createOptionsPanel() {
+        if (!JdkVersion.check()) return null;
         final JBPanel panel = new JBPanel();
         final HyperlinkLabel label = new HyperlinkLabel(CheckerFrameworkBundle.message("open.settings"));
         label.addHyperlinkListener(new HyperlinkListener() {

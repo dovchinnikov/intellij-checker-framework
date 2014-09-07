@@ -6,6 +6,7 @@ import com.intellij.openapi.project.Project;
 import com.jetbrains.plugins.checkerframework.service.CheckerFrameworkSettings;
 import com.jetbrains.plugins.checkerframework.service.CompilerHolder;
 import com.jetbrains.plugins.checkerframework.service.Stuff;
+import com.jetbrains.plugins.checkerframework.util.JdkVersion;
 import org.jetbrains.annotations.Nls;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -17,12 +18,10 @@ import static com.jetbrains.plugins.checkerframework.service.CheckerFrameworkSta
 public class CheckerFrameworkConfigurable implements SearchableConfigurable {
 
     private final @NotNull Project                        myProject;
-    private final @NotNull CheckerFrameworkSettings       mySettings;
     private @Nullable      CheckerFrameworkConfigurableUI myUI;
 
     public CheckerFrameworkConfigurable(final @NotNull Project project) {
         myProject = project;
-        mySettings = CheckerFrameworkSettings.getInstance(project);
     }
 
     @Nls
@@ -38,6 +37,7 @@ public class CheckerFrameworkConfigurable implements SearchableConfigurable {
 
     @Override
     public @Nullable JComponent createComponent() {
+        if (!JdkVersion.check()) return null;
         if (myUI == null) {
             myUI = new CheckerFrameworkConfigurableUIConstructor(myProject) {
                 @Override
@@ -51,14 +51,18 @@ public class CheckerFrameworkConfigurable implements SearchableConfigurable {
 
     @Override
     public boolean isModified() {
+        if (!JdkVersion.check()) return false;
         assert myUI != null;
+        final CheckerFrameworkSettings mySettings = CheckerFrameworkSettings.getInstance(myProject);
         return !collectionEquals(mySettings.getEnabledCheckerClasses(), myUI.getConfiguredEnabledCheckers())
             || !collectionEquals(mySettings.getOptions(), myUI.getConfiguredOptions());
     }
 
     @Override
     public void apply() throws ConfigurationException {
+        if (!JdkVersion.check()) return;
         assert myUI != null;
+        final CheckerFrameworkSettings mySettings = CheckerFrameworkSettings.getInstance(myProject);
         mySettings.setEnabledCheckerClasses(myUI.getConfiguredEnabledCheckers());
         mySettings.setOptions(myUI.getConfiguredOptions());
         CompilerHolder.getInstance(myProject).resetAsync();
@@ -66,8 +70,9 @@ public class CheckerFrameworkConfigurable implements SearchableConfigurable {
 
     @Override
     public void reset() {
+        if (!JdkVersion.check()) return;
         assert myUI != null;
-        myUI.reset(mySettings);
+        myUI.reset(CheckerFrameworkSettings.getInstance(myProject));
     }
 
     @Override

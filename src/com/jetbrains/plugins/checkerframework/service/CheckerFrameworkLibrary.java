@@ -23,7 +23,7 @@ public class CheckerFrameworkLibrary {
                 @Override public Library compute() {
                     final Library library = applicationLibraryTable.createLibrary(Stuff.LIBRARY_NAME);
                     final Library.ModifiableModel modifiableModel = library.getModifiableModel();
-                    modifiableModel.addJarDirectory(new File(Stuff.PATH_TO_CHECKER).getParent(), false, OrderRootType.CLASSES);
+                    modifiableModel.addJarDirectory(new File(CheckersStuff.PATH_TO_CHECKER).getParent(), false, OrderRootType.CLASSES);
                     modifiableModel.commit();
                     return library;
                 }

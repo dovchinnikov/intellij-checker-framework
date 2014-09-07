@@ -6,7 +6,7 @@ import org.jetbrains.annotations.PropertyKey;
 
 public class CheckerFrameworkBundle extends AbstractBundle {
 
-    public static final String                 BUNDLE   = "resources.CheckerFramework";
+    public static final String                 BUNDLE   = "CheckerFramework";
     private static      CheckerFrameworkBundle INSTANCE = new CheckerFrameworkBundle();
 
     private CheckerFrameworkBundle() {

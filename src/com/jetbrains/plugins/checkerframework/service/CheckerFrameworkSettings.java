@@ -28,7 +28,7 @@ public class CheckerFrameworkSettings implements PersistentStateComponent<Checke
     private final @NotNull List<String>                         myOptions               = new ArrayList<String>();
 
     public @NotNull List<Class<? extends SourceChecker>> getBuiltInCheckers() {
-        return Stuff.BUILTIN_CHECKERS;
+        return CheckersStuff.BUILTIN_CHECKERS;
     }
 
     public @NotNull List<Class<? extends SourceChecker>> getEnabledCheckerClasses() {
@@ -52,7 +52,7 @@ public class CheckerFrameworkSettings implements PersistentStateComponent<Checke
     public @NotNull Collection<String> createCompilerOptions() {
         return new LinkedHashSet<String>(myOptions) {{
             add("-cp");
-            add(Stuff.PATH_TO_CHECKER);
+            add(CheckersStuff.PATH_TO_CHECKER);
             add("-Adetailedmsgtext");
         }};
     }

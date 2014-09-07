@@ -1,6 +1,7 @@
 package com.jetbrains.plugins.checkerframework.compiler;
 
 import com.intellij.codeInspection.ProblemDescriptor;
+import com.intellij.openapi.util.Key;
 import com.intellij.psi.PsiJavaFile;
 import com.sun.tools.javac.api.JavacTool;
 import org.checkerframework.framework.source.AggregateChecker;
@@ -14,8 +15,9 @@ import java.util.List;
 
 public interface CheckerFrameworkCompiler {
 
-    JavacTool               JAVA_COMPILER = JavacTool.create();
-    StandardJavaFileManager FILE_MANAGER  = JAVA_COMPILER.getStandardFileManager(null, null, null);
+    JavacTool                     JAVA_COMPILER = JavacTool.create();
+    StandardJavaFileManager       FILE_MANAGER  = JAVA_COMPILER.getStandardFileManager(null, null, null);
+    Key<CheckerFrameworkCompiler> KEY           = new Key<CheckerFrameworkCompiler>("CFCompiler");
 
     @Nullable List<ProblemDescriptor> processFile(@NotNull final PsiJavaFile psiJavaFile);
 

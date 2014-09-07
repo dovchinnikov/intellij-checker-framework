@@ -21,7 +21,7 @@
         <children>
           <grid id="86ae0" binding="myCheckersPanel" layout-manager="BorderLayout" hgap="0" vgap="0">
             <constraints>
-              <tabbedpane title-resource-bundle="resources/CheckerFramework" title-key="available.checkers"/>
+              <tabbedpane title-resource-bundle="CheckerFramework" title-key="available.checkers"/>
             </constraints>
             <properties/>
             <border type="none"/>

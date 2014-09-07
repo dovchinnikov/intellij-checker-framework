@@ -16,6 +16,7 @@ import com.intellij.xml.util.XmlUtil;
 import com.jetbrains.plugins.checkerframework.inspection.fix.SurroundWithIfRegexFix;
 import com.jetbrains.plugins.checkerframework.inspection.fix.WrapWithAsRegexFix;
 import com.jetbrains.plugins.checkerframework.util.CheckerFrameworkBundle;
+import com.jetbrains.plugins.checkerframework.util.CheckerFrameworkOutputParser;
 import com.jetbrains.plugins.checkerframework.util.MultiMapEx;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -99,7 +100,7 @@ public class CheckerFrameworkProblemDescriptorBuilder {
             problemElement = element;
         }
 
-        final List<LocalQuickFix> fixes = new ArrayList<LocalQuickFix>();
+        final List<LocalQuickFix> fixes = new ArrayList<>();
         final String tooltip;
         if ("assignment.type.incompatible".equals(problemKey)
             || "return.type.incompatible".equals(problemKey)
@@ -139,6 +140,7 @@ public class CheckerFrameworkProblemDescriptorBuilder {
         return ServiceManager.getService(project, CheckerFrameworkProblemDescriptorBuilder.class);
     }
 
+    @SuppressWarnings("UnusedDeclaration")
     public ProblemDescriptor buildTooLongProblem(PsiFile file) {
         return myInspectionManager.createProblemDescriptor(
             file,

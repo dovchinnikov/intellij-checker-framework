@@ -56,9 +56,8 @@ public class CheckerFrameworkSharedCompiler extends PsiTreeChangeAdapter {
         JavaParser.setCacheParser(false);
     }
 
-    private final Project myProject;
     private final ReusableDiagnosticCollector myReusableDiagnosticCollector = new ReusableDiagnosticCollector();
-    private final AtomicReference<Boolean>    symtabRunning                 = new AtomicReference<Boolean>(false);
+    private final AtomicReference<Boolean>    symtabRunning                 = new AtomicReference<>(false);
     private final Collection<Class<? extends SourceChecker>> myEnabledCheckerClasses;
     private final CheckerFrameworkProblemDescriptorBuilder   descriptorBuilder;
     private final CheckerFrameworkModificationListener       myModificationListener;
@@ -80,7 +79,6 @@ public class CheckerFrameworkSharedCompiler extends PsiTreeChangeAdapter {
         long startTime = System.currentTimeMillis();
         System.out.println("Compiler instance creating start");
 
-        myProject = project;
         myEnabledCheckerClasses = classes;
         descriptorBuilder = CheckerFrameworkProblemDescriptorBuilder.getInstance(project);
         myModificationListener = CheckerFrameworkModificationListener.getInstance(project);
@@ -142,25 +140,17 @@ public class CheckerFrameworkSharedCompiler extends PsiTreeChangeAdapter {
                 LOG.error(e);
                 return null;
             }
-            final List<ProblemDescriptor> problems = new ArrayList<ProblemDescriptor>();
+            final List<ProblemDescriptor> problems = new ArrayList<>();
 //            final Future future = ApplicationManager.getApplication().executeOnPooledThread();
             try {
-                myReusableDiagnosticCollector.setInternal(new DiagnosticListener<JavaFileObject>() {
-                    @Override
-                    public void report(final Diagnostic<? extends JavaFileObject> diagnostic) {
-                        final ProblemDescriptor problemDescriptor = ApplicationManager.getApplication().runReadAction(new Computable<ProblemDescriptor>() {
-                            @Override
-                            public ProblemDescriptor compute() {
-                                return descriptorBuilder.buildProblemDescriptor(
-                                    psiJavaFile,
-                                    diagnostic,
-                                    isOnTheFly
-                                );
-                            }
-                        });
-                        if (problemDescriptor != null) {
-                            problems.add(problemDescriptor);
-                        }
+                myReusableDiagnosticCollector.setInternal(diagnostic -> {
+                    final ProblemDescriptor problemDescriptor = ApplicationManager.getApplication().runReadAction((Computable<ProblemDescriptor>) () -> descriptorBuilder.buildProblemDescriptor(
+                        psiJavaFile,
+                        diagnostic,
+                        isOnTheFly
+                    ));
+                    if (problemDescriptor != null) {
+                        problems.add(problemDescriptor);
                     }
                 });
                 processor = isOnTheFly ? processor : createAntInitProcessor();
@@ -261,16 +251,13 @@ public class CheckerFrameworkSharedCompiler extends PsiTreeChangeAdapter {
 
             try {
                 symtabRunning.set(true);
-                final ClassSymbol classSymbol = ApplicationManager.getApplication().runReadAction(new Computable<ClassSymbol>() {
-                    @Override
-                    public ClassSymbol compute() {
-                        clean(myPsiJavaFile);
-                        final PsiJavaFileObject javaFileObject = new PsiJavaFileObject(myPsiJavaFile);
-                        return ClassReader.instance(mySharedContext).enterClass(
-                            names.fromString(fileManager.inferBinaryName(null, javaFileObject)),
-                            javaFileObject
-                        );
-                    }
+                final ClassSymbol classSymbol = ApplicationManager.getApplication().runReadAction((Computable<ClassSymbol>) () -> {
+                    clean(myPsiJavaFile);
+                    final PsiJavaFileObject javaFileObject = new PsiJavaFileObject(myPsiJavaFile);
+                    return ClassReader.instance(mySharedContext).enterClass(
+                        names.fromString(fileManager.inferBinaryName(null, javaFileObject)),
+                        javaFileObject
+                    );
                 });
                 classSymbol.complete();
                 while (!todo.isEmpty()) {
@@ -280,16 +267,13 @@ public class CheckerFrameworkSharedCompiler extends PsiTreeChangeAdapter {
                     }
                 }
 
-                return ApplicationManager.getApplication().runReadAction(new Computable<List<ClassSymbol>>() {
-                    @Override
-                    public List<ClassSymbol> compute() {
-                        final List<ClassSymbol> result = new ArrayList<ClassSymbol>();
-                        for (final PsiClass psiClass : myPsiJavaFile.getClasses()) {
-                            final Name name = getFlatName(psiClass);
-                            result.add(symtab.classes.get(name));
-                        }
-                        return result;
+                return ApplicationManager.getApplication().runReadAction((Computable<List<ClassSymbol>>) () -> {
+                    final List<ClassSymbol> result = new ArrayList<>();
+                    for (final PsiClass psiClass : myPsiJavaFile.getClasses()) {
+                        final Name name = getFlatName(psiClass);
+                        result.add(symtab.classes.get(name));
                     }
+                    return result;
                 });
             } finally {
                 System.out.println(System.currentTimeMillis() - start + "ms elapsed");

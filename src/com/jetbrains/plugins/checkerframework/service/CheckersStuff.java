@@ -23,14 +23,9 @@ import org.checkerframework.framework.util.CheckerMain;
 import java.util.Arrays;
 import java.util.List;
 
-public interface Stuff {
+public interface CheckersStuff {
 
-    String LIBRARY_NAME    = "Checker Framework 1.8.4";
-    String REGEX_ANNO_FQN  = "org.checkerframework.checker.regex.qual.Regex";
-    String REGEX_UTIL_FQN  = "org.checkerframework.checker.regex.RegexUtil";
     String PATH_TO_CHECKER = CheckerMain.findPathTo(SourceChecker.class, false);
-    String CONFIGURABLE_ID = "cfConfigurable";
-    String PROC_CODE       = "compiler.err.proc.messager";
 
     List<Class<? extends SourceChecker>> BUILTIN_CHECKERS = Arrays.asList(
         NullnessChecker.class,

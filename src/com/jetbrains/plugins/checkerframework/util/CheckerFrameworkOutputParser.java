@@ -1,4 +1,4 @@
-package com.jetbrains.plugins.checkerframework.service;
+package com.jetbrains.plugins.checkerframework.util;
 
 import org.jetbrains.annotations.NotNull;
 

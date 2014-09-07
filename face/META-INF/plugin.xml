@@ -51,9 +51,9 @@
         <projectConfigurable instance="com.jetbrains.plugins.checkerframework.configurable.CheckerFrameworkConfigurable"/>
 
         <localInspection
-            groupBundle="resources.CheckerFramework"
+            groupBundle="CheckerFramework"
             groupKey="group.name"
-            bundle="resources.CheckerFramework"
+            bundle="CheckerFramework"
             key="regex.useless.placement"
             level="WARNING"
             language="JAVA"
@@ -61,9 +61,9 @@
             implementationClass="com.jetbrains.plugins.checkerframework.inspection.RegexUselessPlacementInspection"/>
 
         <globalInspection
-            groupBundle="resources.CheckerFramework"
+            groupBundle="CheckerFramework"
             groupKey="group.name"
-            bundle="resources.CheckerFramework"
+            bundle="CheckerFramework"
             key="global.inspection.name"
             level="ERROR"
             language="JAVA"

@@ -8,7 +8,7 @@ import java.util.Collection;
 public class MultiMapEx extends MultiMap<String, Class<? extends PsiElement>> {
 
     @SuppressWarnings("unchecked")
-    public Class[] asArray(String key) {
+    public Class<? extends PsiElement>[] asArray(String key) {
         final Collection<Class<? extends PsiElement>> result = get(key);
         return result.toArray(new Class[result.size()]);
     }

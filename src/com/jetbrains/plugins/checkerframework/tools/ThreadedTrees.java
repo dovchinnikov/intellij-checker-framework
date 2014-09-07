@@ -18,11 +18,7 @@ import javax.lang.model.type.DeclaredType;
 public class ThreadedTrees extends JavacTrees {
 
     public static void preRegister(Context context) {
-        context.put(JavacTrees.class, new Context.Factory<JavacTrees>() {
-            @Override public JavacTrees make(Context c) {
-                return new ThreadedTrees(c);
-            }
-        });
+        context.put(JavacTrees.class, (Context.Factory<JavacTrees>) ThreadedTrees::new);
     }
 
     protected ThreadedTrees(Context context) {

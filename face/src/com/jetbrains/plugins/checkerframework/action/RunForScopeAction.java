@@ -21,6 +21,8 @@ import org.jetbrains.annotations.NotNull;
 @SuppressWarnings("ComponentNotRegistered")
 public abstract class RunForScopeAction extends AnAction {
 
+    public abstract @NotNull AnalysisScope getScope(AnActionEvent e);
+
     @Override
     public void actionPerformed(AnActionEvent e) {
         final InspectionToolWrapper toolWrapper = ((InspectionProfileImpl) InspectionProfileManager.getInstance().getRootProfile()).getInspectionTool("cfInspection", e.getProject());
@@ -29,8 +31,6 @@ public abstract class RunForScopeAction extends AnAction {
         final AnalysisScope scope = getScope(e);
         RunInspectionIntention.rerunInspection(toolWrapper, inspectionManagerEx, scope, null);
     }
-
-    public abstract @NotNull AnalysisScope getScope(AnActionEvent e);
 
     public static class RunForCurrentFile extends RunForScopeAction {
 
