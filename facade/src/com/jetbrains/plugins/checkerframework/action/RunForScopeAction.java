@@ -16,12 +16,19 @@ import com.intellij.openapi.project.Project;
 import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.profile.codeInspection.InspectionProfileManager;
 import com.intellij.psi.PsiFile;
+import com.jetbrains.plugins.checkerframework.util.JdkVersion;
 import org.jetbrains.annotations.NotNull;
 
 @SuppressWarnings("ComponentNotRegistered")
 public abstract class RunForScopeAction extends AnAction {
 
     public abstract @NotNull AnalysisScope getScope(AnActionEvent e);
+
+    @Override
+    public void update(AnActionEvent e) {
+        super.update(e);
+        e.getPresentation().setEnabled(JdkVersion.check());
+    }
 
     @Override
     public void actionPerformed(AnActionEvent e) {
@@ -43,6 +50,7 @@ public abstract class RunForScopeAction extends AnAction {
 
         @Override
         public void update(AnActionEvent e) {
+            super.update(e);
             final PsiFile file = e.getData(CommonDataKeys.PSI_FILE);
             e.getPresentation().setEnabled(file != null && file.getLanguage().is(JavaLanguage.INSTANCE));
         }
