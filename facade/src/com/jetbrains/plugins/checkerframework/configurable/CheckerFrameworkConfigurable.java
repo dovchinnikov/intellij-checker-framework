@@ -6,7 +6,6 @@ import com.intellij.openapi.project.Project;
 import com.intellij.ui.components.JBLabel;
 import com.intellij.ui.components.JBPanel;
 import com.jetbrains.plugins.checkerframework.service.CheckerFrameworkSettings;
-import com.jetbrains.plugins.checkerframework.service.CompilerHolder;
 import com.jetbrains.plugins.checkerframework.service.Stuff;
 import com.jetbrains.plugins.checkerframework.util.CheckerFrameworkBundle;
 import com.jetbrains.plugins.checkerframework.util.JdkVersion;
@@ -81,7 +80,6 @@ public class CheckerFrameworkConfigurable implements SearchableConfigurable {
         final CheckerFrameworkSettings mySettings = CheckerFrameworkSettings.getInstance(myProject);
         mySettings.setEnabledCheckerClasses(myUI.getConfiguredEnabledCheckers());
         mySettings.setOptions(myUI.getConfiguredOptions());
-        CompilerHolder.getInstance(myProject).resetAsync();
     }
 
     @Override
