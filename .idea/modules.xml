@@ -3,8 +3,8 @@
   <component name="ProjectModuleManager">
     <modules>
       <module fileurl="file://$PROJECT_DIR$/common/common.iml" filepath="$PROJECT_DIR$/common/common.iml" />
-      <module fileurl="file://$PROJECT_DIR$/facade/facade.iml" filepath="$PROJECT_DIR$/facade/facade.iml" />
-      <module fileurl="file://$PROJECT_DIR$/intellij-checker-framework.iml" filepath="$PROJECT_DIR$/intellij-checker-framework.iml" />
+      <module fileurl="file://$PROJECT_DIR$/implementation.iml" filepath="$PROJECT_DIR$/implementation.iml" />
+      <module fileurl="file://$PROJECT_DIR$/facade/intellij-checker-framework.iml" filepath="$PROJECT_DIR$/facade/intellij-checker-framework.iml" />
     </modules>
   </component>
 </project>

@@ -10,7 +10,8 @@
     <orderEntry type="sourceFolder" forTests="false" />
     <orderEntry type="library" scope="PROVIDED" name="groovy-2.3.6" level="application" />
     <orderEntry type="module" module-name="common" />
-    <orderEntry type="module" module-name="intellij-checker-framework" />
+    <orderEntry type="module" module-name="implementation" />
+    <orderEntry type="library" name="checker-framework" level="application" />
   </component>
 </module>
 

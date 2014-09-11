@@ -13,6 +13,7 @@
           <option name="KEEP_SIMPLE_METHODS_IN_ONE_LINE" value="false" />
           <option name="KEEP_SIMPLE_CLASSES_IN_ONE_LINE" value="false" />
           <option name="IF_BRACE_FORCE" value="1" />
+          <option name="METHOD_ANNOTATION_WRAP" value="1" />
           <option name="FIELD_ANNOTATION_WRAP" value="0" />
           <indentOptions>
             <option name="CONTINUATION_INDENT_SIZE" value="4" />

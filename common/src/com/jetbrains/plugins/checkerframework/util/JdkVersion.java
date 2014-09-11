@@ -5,7 +5,7 @@ public class JdkVersion {
     public static final double JDK_VERSION = getJdkVersion();
 
     public static boolean check() {
-        return JDK_VERSION >= 1.8;
+        return JDK_VERSION == 1.8;
     }
 
     public static double getJdkVersion() {

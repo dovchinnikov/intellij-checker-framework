@@ -3,15 +3,20 @@ package com.jetbrains.plugins.checkerframework.configurable;
 import com.intellij.openapi.options.ConfigurationException;
 import com.intellij.openapi.options.SearchableConfigurable;
 import com.intellij.openapi.project.Project;
+import com.intellij.ui.components.JBLabel;
+import com.intellij.ui.components.JBPanel;
 import com.jetbrains.plugins.checkerframework.service.CheckerFrameworkSettings;
 import com.jetbrains.plugins.checkerframework.service.CompilerHolder;
 import com.jetbrains.plugins.checkerframework.service.Stuff;
+import com.jetbrains.plugins.checkerframework.util.CheckerFrameworkBundle;
 import com.jetbrains.plugins.checkerframework.util.JdkVersion;
 import org.jetbrains.annotations.Nls;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import javax.swing.*;
+import java.awt.*;
+import java.util.Locale;
 
 import static com.jetbrains.plugins.checkerframework.service.CheckerFrameworkState.collectionEquals;
 
@@ -37,7 +42,18 @@ public class CheckerFrameworkConfigurable implements SearchableConfigurable {
 
     @Override
     public @Nullable JComponent createComponent() {
-        if (!JdkVersion.check()) return null;
+        if (!JdkVersion.check()) {
+            final JPanel panel = new JBPanel(new BorderLayout());
+            panel.add(
+                new JBLabel(
+                    CheckerFrameworkBundle.message(
+                        "unsupported.jre.message", String.format(Locale.US, "%.1f", JdkVersion.getJdkVersion())
+                    )
+                ),
+                BorderLayout.NORTH
+            );
+            return panel;
+        }
         if (myUI == null) {
             myUI = new CheckerFrameworkConfigurableUIConstructor(myProject) {
                 @Override
