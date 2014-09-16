@@ -1,16 +1,18 @@
-<?xml version="1.0" encoding="iso-8859-1"?>
+<?xml version="1.0" encoding="UTF-8"?>
 <idea-plugin version="2">
 
     <id>com.intellij.checker-framework</id>
     <name>Checker Framework Support</name>
     <version>1.0</version>
     <description>
-        The Checker Framework enhances Java?s type system to make it more powerful and useful. This lets software
+        The Checker Framework enhances Java type system to make it more powerful and useful. This lets software
         developers detect and prevent errors in their Java programs. The Checker Framework includes compiler plug-ins
         ("checkers") that find bugs or verify their absence.
     </description>
 
-    <vendor email="ovchinnikov.daniel@gmail.com">JetBrains</vendor>
+    <idea-version since-build="135.0"/>
+
+    <vendor email="ovchinnikov.daniel@gmail.com" url="http://ovchinnikov.pw">Daniil Ovchinnikov</vendor>
 
     <depends>com.intellij.modules.platform</depends>
 
