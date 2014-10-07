@@ -14,3 +14,5 @@ hs_err_pid*
 # Intellij project files
 out/
 unused/
+.idea/workspace.xml
+
